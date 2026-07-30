@@ -1,0 +1,36 @@
+<Project>
+    <!-- https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <!-- Позволяет пинить версии транзитивных зависимостей через PackageVersion. -->
+        <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Avalonia packages -->
+        <!-- Important: keep version in sync! -->
+        <PackageVersion Include="Avalonia" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.iOS" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.Browser" Version="12.1.1" />
+        <PackageVersion Include="Avalonia.Android" Version="12.1.1" />
+        <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+
+        <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+
+        <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
+
+        <!-- Core -->
+        <PackageVersion Include="MessagePack" Version="3.1.8" />
+        <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+        <!-- Пин нативного SQLite: в 2.1.11 уязвимость GHSA-2m69-gcr7-jv3q (High). -->
+        <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+
+        <!-- Tests -->
+        <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+        <PackageVersion Include="xunit" Version="2.9.3" />
+        <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    </ItemGroup>
+</Project>

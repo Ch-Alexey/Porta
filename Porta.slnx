@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Porta.App.Desktop/Porta.App.Desktop.csproj" />
+    <Project Path="src/Porta.App/Porta.App.csproj" />
+    <Project Path="src/Porta.Core/Porta.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Porta.Core.Tests/Porta.Core.Tests.csproj" />
+  </Folder>
+</Solution>
