@@ -21,6 +21,7 @@ public class MigrationsTests
         Assert.Contains("storages", tables);
         Assert.Contains("storage_devices", tables);
         Assert.Contains("settings", tables);
+        Assert.Contains("file_index", tables);
     }
 
     [Fact]

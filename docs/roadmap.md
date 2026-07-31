@@ -39,7 +39,10 @@
 - [x] Игнор-паттерны в скане/синке (`IgnoreRules`). Служебные папки не синхронизируются. См. [features/12-ignore-patterns](features/12-ignore-patterns.md).
 - [ ] Политика хранения версий (сколько/сколько времени) и восстановление из UI.
 - [x] Модель version vectors (сравнение/слияние/конфликт). См. [features/13-version-vectors](features/13-version-vectors.md).
-- [ ] Привязка version vectors к файлам и разрешение конфликтов при синке (конфликт → обе версии).
+- [x] Версионированный индекс (`IndexVersioning`) — инкремент версии при изменении. См. [features/14](features/14-versioned-index.md).
+- [x] Решение о конфликте (`ConflictResolver`) + применение к файлам (`SyncApplier`, конфликт → обе версии). См. [15](features/15-conflict-resolution.md), [16](features/16-conflict-apply.md).
+- [x] Обмен версионированными индексами + персистентность версий (SQLite) + разрешение конфликтов в синке. См. [features/17-versioned-sync](features/17-versioned-sync.md).
+- [ ] Встречный проход (полная двусторонняя конвергенция за сеанс), удаления, сжатие векторов.
 
 ## Этап 5 — Вкладка «Медиа»
 - [ ] Сканер фото/видео по устройству, EXIF, превью.

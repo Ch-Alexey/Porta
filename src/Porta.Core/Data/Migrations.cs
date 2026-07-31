@@ -43,5 +43,18 @@ internal static class Migrations
             value         TEXT    NOT NULL
         );
         """,
+
+        // 002 — версионированный индекс файлов (запись = MessagePack(VersionedFileEntry)).
+        """
+        CREATE TABLE file_index (
+            storage_id    TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            content_hash  BLOB NOT NULL,
+            entry         BLOB NOT NULL,
+            PRIMARY KEY (storage_id, relative_path)
+        );
+
+        CREATE INDEX ix_file_index_storage ON file_index (storage_id);
+        """,
     };
 }
