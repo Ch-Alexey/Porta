@@ -51,8 +51,8 @@ public class IndexExchangeOverQuicTests : IDisposable
         var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, ct);
         var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, ct);
         await Task.WhenAll(clientSessionTask, serverSessionTask);
-        await using var cs = clientSessionTask.Result;
-        await using var ss = serverSessionTask.Result;
+        await using var cs = await clientSessionTask;
+        await using var ss = await serverSessionTask;
 
         // Сервер шлёт свой индекс, клиент читает и вычисляет дельту.
         var writeTask = ss.Control.WriteAsync(new FolderIndexMessage("s1", serverIndex), ct).AsTask();

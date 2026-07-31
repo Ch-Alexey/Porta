@@ -20,13 +20,14 @@ public static class SyncProtocol
         MessageChannel channel,
         string folder,
         string storageId,
+        IgnoreRules? ignore = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
 
         _ = await channel.ReadAsync<FolderIndexRequest>(cancellationToken).ConfigureAwait(false);
 
-        IReadOnlyList<FileIndexEntry> index = new FolderScanner().Scan(folder);
+        IReadOnlyList<FileIndexEntry> index = new FolderScanner().Scan(folder, ignore);
         await channel.WriteAsync(new FolderIndexMessage(storageId, index), cancellationToken).ConfigureAwait(false);
 
         var reader = new FolderBlockReader(folder, index);
@@ -46,6 +47,7 @@ public static class SyncProtocol
         string folder,
         string storageId,
         IVersionStore? versions = null,
+        IgnoreRules? ignore = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -53,7 +55,7 @@ public static class SyncProtocol
         await channel.WriteAsync(new FolderIndexRequest(storageId), cancellationToken).ConfigureAwait(false);
         FolderIndexMessage remote = await channel.ReadAsync<FolderIndexMessage>(cancellationToken).ConfigureAwait(false);
 
-        IReadOnlyList<FileIndexEntry> localIndex = new FolderScanner().Scan(folder);
+        IReadOnlyList<FileIndexEntry> localIndex = new FolderScanner().Scan(folder, ignore);
         IndexDiff diff = IndexComparer.Compare(localIndex, remote.Entries);
 
         await channel.WriteAsync(

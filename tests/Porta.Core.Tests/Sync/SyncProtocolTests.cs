@@ -1,4 +1,5 @@
 using System.Text;
+using Porta.Core.Indexing;
 using Porta.Core.Protocol;
 using Porta.Core.Sync;
 
@@ -28,11 +29,11 @@ public class SyncProtocolTests : IDisposable
     private byte[] ReceiverFile(string relativePath)
         => File.ReadAllBytes(Path.Combine(_receiverDir, relativePath.Replace('/', Path.DirectorySeparatorChar)));
 
-    private async Task<SyncResult> RunSyncAsync(IVersionStore? versions = null)
+    private async Task<SyncResult> RunSyncAsync(IVersionStore? versions = null, IgnoreRules? ignore = null)
     {
         var (a, b) = ConnectedChannels.Create();
-        Task serve = SyncProtocol.ServeAsync(b, _senderDir, "s1");
-        Task<SyncResult> pull = SyncProtocol.PullAsync(a, _receiverDir, "s1", versions);
+        Task serve = SyncProtocol.ServeAsync(b, _senderDir, "s1", ignore);
+        Task<SyncResult> pull = SyncProtocol.PullAsync(a, _receiverDir, "s1", versions, ignore);
         await Task.WhenAll(serve, pull);
         return pull.Result;
     }
@@ -81,6 +82,19 @@ public class SyncProtocolTests : IDisposable
         Assert.Equal("new content from sender", Encoding.UTF8.GetString(ReceiverFile("a.txt")));
         string archived = Assert.Single(versions.ListVersions("a.txt"));
         Assert.Equal("old content on receiver", File.ReadAllText(archived));
+    }
+
+    [Fact]
+    public async Task Ignored_service_folder_is_not_synchronized()
+    {
+        SenderFile("data.txt", Encoding.UTF8.GetBytes("real data"));
+        SenderFile(".porta/versions/old~1.txt", Encoding.UTF8.GetBytes("internal"));
+
+        SyncResult result = await RunSyncAsync(ignore: new IgnoreRules([".porta/"]));
+
+        Assert.Equal(1, result.FilesUpdated);
+        Assert.True(File.Exists(Path.Combine(_receiverDir, "data.txt")));
+        Assert.False(Directory.Exists(Path.Combine(_receiverDir, ".porta")));
     }
 
     [Fact]

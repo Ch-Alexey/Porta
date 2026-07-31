@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Интеграционные тесты вызывают платформо-зависимый QUIC-API, но гейтятся в
+         рантайме по QuicTransport.IsSupported. CA1416 здесь — шум. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

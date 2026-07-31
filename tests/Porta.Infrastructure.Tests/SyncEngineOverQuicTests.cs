@@ -51,15 +51,15 @@ public class SyncEngineOverQuicTests : IDisposable
         var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, ct);
         var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, ct);
         await Task.WhenAll(clientSessionTask, serverSessionTask);
-        await using PeerSession cs = clientSessionTask.Result;
-        await using PeerSession ss = serverSessionTask.Result;
+        await using PeerSession cs = await clientSessionTask;
+        await using PeerSession ss = await serverSessionTask;
 
         // Сервер отдаёт своё хранилище, клиент тянет.
-        Task serve = SyncProtocol.ServeAsync(ss.Control, _senderDir, "s1", ct);
+        Task serve = SyncProtocol.ServeAsync(ss.Control, _senderDir, "s1", cancellationToken: ct);
         Task<SyncResult> pull = SyncProtocol.PullAsync(cs.Control, _receiverDir, "s1", cancellationToken: ct);
         await Task.WhenAll(serve, pull);
 
-        Assert.Equal(2, pull.Result.FilesUpdated);
+        Assert.Equal(2, (await pull).FilesUpdated);
         Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(_receiverDir, "docs", "big.bin"), ct));
         Assert.Equal("hello", await File.ReadAllTextAsync(Path.Combine(_receiverDir, "note.txt"), ct));
     }

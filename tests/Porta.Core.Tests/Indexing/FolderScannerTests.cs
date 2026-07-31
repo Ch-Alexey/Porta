@@ -58,6 +58,20 @@ public class FolderScannerTests : IDisposable
     }
 
     [Fact]
+    public void Scan_skips_ignored_files()
+    {
+        WriteFile("keep.txt", Encoding.UTF8.GetBytes("keep"));
+        WriteFile(".porta/versions/old~1.txt", Encoding.UTF8.GetBytes("archived"));
+        WriteFile("build/out.js", Encoding.UTF8.GetBytes("built"));
+        WriteFile("scratch.tmp", Encoding.UTF8.GetBytes("temp"));
+
+        var ignore = new IgnoreRules([".porta/", "/build/", "*.tmp"]);
+        var entries = new FolderScanner().Scan(_root, ignore);
+
+        Assert.Equal(["keep.txt"], entries.Select(e => e.RelativePath));
+    }
+
+    [Fact]
     public void Scan_missing_folder_throws()
     {
         Assert.Throws<DirectoryNotFoundException>(

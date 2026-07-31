@@ -55,8 +55,8 @@ public class FileSyncOverQuicTests : IDisposable
         var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, ct);
         var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, ct);
         await Task.WhenAll(clientSessionTask, serverSessionTask);
-        await using PeerSession cs = clientSessionTask.Result;
-        await using PeerSession ss = serverSessionTask.Result;
+        await using PeerSession cs = await clientSessionTask;
+        await using PeerSession ss = await serverSessionTask;
 
         async Task ServerFlow()
         {

@@ -17,23 +17,28 @@ public sealed class FolderScanner
     /// Просканировать папку. Возвращает записи, отсортированные по относительному пути
     /// (стабильный порядок для сравнения индексов между устройствами).
     /// </summary>
-    public IReadOnlyList<FileIndexEntry> Scan(string rootPath)
+    public IReadOnlyList<FileIndexEntry> Scan(string rootPath, IgnoreRules? ignore = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
         if (!Directory.Exists(rootPath))
             throw new DirectoryNotFoundException($"Папка хранилища не найдена: {rootPath}");
 
+        ignore ??= IgnoreRules.Empty;
         var entries = new List<FileIndexEntry>();
         foreach (string file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
-            entries.Add(IndexFile(rootPath, file));
+        {
+            string relativePath = NormalizeRelativePath(rootPath, file);
+            if (ignore.IsIgnored(relativePath))
+                continue;
+            entries.Add(IndexFile(rootPath, file, relativePath));
+        }
 
         entries.Sort((a, b) => string.CompareOrdinal(a.RelativePath, b.RelativePath));
         return entries;
     }
 
-    private FileIndexEntry IndexFile(string rootPath, string filePath)
+    private FileIndexEntry IndexFile(string rootPath, string filePath, string relativePath)
     {
-        string relativePath = NormalizeRelativePath(rootPath, filePath);
         var modifiedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath), TimeSpan.Zero);
 
         using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);

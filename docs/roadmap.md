@@ -8,7 +8,7 @@
 - [x] Структура решения: `Porta.Core`, `Porta.App` (Avalonia) + головы, `Porta.Core.Tests`. См. [project-structure](architecture/01-project-structure.md).
 - [x] Сборка десктоп-головы + тесты (зелёные).
 - [ ] Установить workloads и включить мобильные/браузерную головы в solution.
-- [ ] Базовый CI (сборка + тесты).
+- [x] Базовый CI (GitHub Actions: сборка + юнит-тесты + проверка уязвимостей). `.github/workflows/ci.yml`.
 
 ## Этап 1 — Личность и хранилище (локально)
 - [x] Генерация ключей устройства (ECDSA P-256), Device ID, персистентность. См. [features/01-identity](features/01-identity.md).
@@ -36,8 +36,10 @@
 - [x] Движок оркестрации синка хранилища (`SyncProtocol`, pull целого хранилища). См. [features/10-sync-engine](features/10-sync-engine.md).
 - [ ] Двусторонний синк (оба узла сходятся) и потоковость (индекс/блоки не одним сообщением).
 - [x] Сохранение предыдущих версий перед перезаписью файла (`IVersionStore`). См. [features/11-versioning](features/11-versioning.md).
+- [x] Игнор-паттерны в скане/синке (`IgnoreRules`). Служебные папки не синхронизируются. См. [features/12-ignore-patterns](features/12-ignore-patterns.md).
 - [ ] Политика хранения версий (сколько/сколько времени) и восстановление из UI.
-- [ ] Разрешение конфликтов (version vectors).
+- [x] Модель version vectors (сравнение/слияние/конфликт). См. [features/13-version-vectors](features/13-version-vectors.md).
+- [ ] Привязка version vectors к файлам и разрешение конфликтов при синке (конфликт → обе версии).
 
 ## Этап 5 — Вкладка «Медиа»
 - [ ] Сканер фото/видео по устройству, EXIF, превью.

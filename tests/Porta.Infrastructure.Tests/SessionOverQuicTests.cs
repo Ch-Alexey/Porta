@@ -47,8 +47,8 @@ public class SessionOverQuicTests
         Task<PeerSession> serverSession = PeerSession.EstablishAsync(serverConn, serverTrust, "Server", isInitiator: false, ct);
         await Task.WhenAll(clientSession, serverSession);
 
-        await using PeerSession cs = clientSession.Result;
-        await using PeerSession ss = serverSession.Result;
+        await using PeerSession cs = await clientSession;
+        await using PeerSession ss = await serverSession;
 
         Assert.Equal(serverId.Id, cs.RemoteDeviceId);
         Assert.Equal("Server", cs.RemoteDeviceName);
