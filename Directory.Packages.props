@@ -27,6 +27,10 @@
         <!-- Пин нативного SQLite: в 2.1.11 уязвимость GHSA-2m69-gcr7-jv3q (High). -->
         <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
 
+        <!-- Infrastructure: mDNS-обнаружение -->
+        <PackageVersion Include="Makaretu.Dns" Version="2.0.1" />
+        <PackageVersion Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+
         <!-- Tests -->
         <PackageVersion Include="coverlet.collector" Version="6.0.4" />
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

@@ -11,7 +11,9 @@ Porta/
 ├── src/
 │   ├── Porta.Core/               — ЯДРО: платформонезависимая логика (net10.0)
 │   │                               identity, discovery, transport, indexer, sync,
-│   │                               storage, media. Зависимость: MessagePack.
+│   │                               storage, media. Зависимости: MessagePack, Microsoft.Data.Sqlite.
+│   ├── Porta.Infrastructure/     — реализации платформо/сетевых абстракций ядра
+│   │                               (mDNS на Makaretu.Dns). Изолирует «тяжёлые» зависимости.
 │   ├── Porta.App/                — общий UI на Avalonia (shared), ссылается на Core
 │   ├── Porta.App.Desktop/        — голова: Windows/macOS/Linux desktop
 │   ├── Porta.App.Android/        — голова: Android   (вне solution до workload'ов)
@@ -24,7 +26,8 @@ Porta/
 ## Что в solution сейчас
 
 Собираются без дополнительных SDK-workload'ов:
-`Porta.Core`, `Porta.App` (shared), `Porta.App.Desktop`, `Porta.Core.Tests`.
+`Porta.Core`, `Porta.Infrastructure`, `Porta.App` (shared), `Porta.App.Desktop`,
+`Porta.Core.Tests`.
 
 **Мобильные и браузерная головы** (`Android`, `iOS`, `Browser`) сгенерированы и лежат
 на диске, но **не добавлены в solution**, потому что требуют установки workload'ов
@@ -51,6 +54,22 @@ dotnet build Porta.slnx
 
 ```bash
 dotnet test Porta.slnx
+```
+
+Только юнит-тесты, без интеграционных (напр. в CI, где нет multicast для mDNS):
+
+```bash
+dotnet test Porta.slnx --filter "Category!=Integration"
+```
+
+> Интеграционные тесты помечены `[Trait("Category", "Integration")]`. Тест реального
+> mDNS требует рабочего multicast; тесты QUIC требуют libmsquic (без неё тихо
+> пропускаются).
+
+Полный прогон с QUIC (macOS + Homebrew libmsquic):
+
+```bash
+DYLD_LIBRARY_PATH=/opt/homebrew/opt/libmsquic/lib dotnet test Porta.slnx
 ```
 
 Запуск десктоп-приложения:

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Porta.Core.Identity;
 
@@ -33,6 +34,19 @@ public sealed class DeviceIdentity : IDisposable
 
     /// <summary>Публичный ключ в формате SubjectPublicKeyInfo (DER) — им делятся при связывании.</summary>
     public byte[] ExportPublicKey() => _key.ExportSubjectPublicKeyInfo();
+
+    /// <summary>
+    /// Построить самоподписанный X.509-сертификат из ключа устройства для TLS/QUIC.
+    /// Публичный ключ сертификата совпадает с ключом устройства, поэтому он привязан к
+    /// <see cref="Id"/>. См. docs/features/06-transport.md.
+    /// </summary>
+    public X509Certificate2 CreateSelfSignedCertificate(DateTimeOffset notBefore, DateTimeOffset notAfter)
+    {
+        var request = new CertificateRequest($"CN={Id}", _key, HashAlgorithmName.SHA256);
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(certificateAuthority: false, false, 0, critical: true));
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, critical: true));
+        return request.CreateSelfSigned(notBefore, notAfter);
+    }
 
     /// <summary>Приватный ключ в формате PKCS#8 (DER) — только для персистентности личности.</summary>
     internal byte[] ExportPrivateKey() => _key.ExportPkcs8PrivateKey();

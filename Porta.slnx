@@ -3,8 +3,10 @@
     <Project Path="src/Porta.App.Desktop/Porta.App.Desktop.csproj" />
     <Project Path="src/Porta.App/Porta.App.csproj" />
     <Project Path="src/Porta.Core/Porta.Core.csproj" />
+    <Project Path="src/Porta.Infrastructure/Porta.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Porta.Core.Tests/Porta.Core.Tests.csproj" />
+    <Project Path="tests/Porta.Infrastructure.Tests/Porta.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

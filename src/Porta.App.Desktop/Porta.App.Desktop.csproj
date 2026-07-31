@@ -17,5 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Porta.App\Porta.App.csproj" />
+    <ProjectReference Include="..\Porta.Infrastructure\Porta.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

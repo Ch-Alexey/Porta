@@ -18,12 +18,13 @@
 - [x] Indexer: скан папки, метаданные, хеши, content-defined chunking. См. [features/03-indexer](features/03-indexer.md).
 
 ## Этап 2 — Обнаружение и связывание в LAN
-- [ ] Discovery по mDNS/UDP-broadcast.
-- [ ] Pairing через QR-код / ссылку + одноразовый код.
-- [ ] Доверенные устройства, проверка ключей.
+- [x] Discovery по mDNS (Makaretu.Dns): чистое ядро + `Porta.Infrastructure`. См. [features/05-discovery](features/05-discovery.md).
+- [x] Pairing: формат токена (QR/ссылка) + одноразовый код, доменно-разделённые подписи. См. [features/04-pairing](features/04-pairing.md).
+- [x] Доверенные устройства, проверка ключей (логика; сетевой обмен — Этап 3).
 
 ## Этап 3 — Передача данных
-- [ ] TLS-канал между доверенными устройствами.
+- [x] Сертификат устройства из ключа + проверка pinning (`DeviceCertificate`). См. [features/06-transport](features/06-transport.md).
+- [x] QUIC listener/connector, взаимная аутентификация по Device ID (pinning), обмен данными. Интеграционный тест зелёный.
 - [ ] Протокол: обмен индексами, запрос и передача блоков.
 - [ ] Первая реальная синхронизация файла между двумя устройствами.
 
