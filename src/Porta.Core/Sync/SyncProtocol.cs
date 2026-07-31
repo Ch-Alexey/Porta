@@ -45,6 +45,7 @@ public static class SyncProtocol
         MessageChannel channel,
         string folder,
         string storageId,
+        IVersionStore? versions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -67,7 +68,7 @@ public static class SyncProtocol
         long bytes = 0;
         foreach (FileIndexEntry file in diff.FilesToUpdate)
         {
-            FileAssembler.Write(folder, file, source);
+            FileAssembler.Write(folder, file, source, versions);
             bytes += file.Size;
         }
 

@@ -56,7 +56,7 @@ public class SyncEngineOverQuicTests : IDisposable
 
         // Сервер отдаёт своё хранилище, клиент тянет.
         Task serve = SyncProtocol.ServeAsync(ss.Control, _senderDir, "s1", ct);
-        Task<SyncResult> pull = SyncProtocol.PullAsync(cs.Control, _receiverDir, "s1", ct);
+        Task<SyncResult> pull = SyncProtocol.PullAsync(cs.Control, _receiverDir, "s1", cancellationToken: ct);
         await Task.WhenAll(serve, pull);
 
         Assert.Equal(2, pull.Result.FilesUpdated);

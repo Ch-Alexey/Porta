@@ -34,6 +34,42 @@ public class FileAssemblerTests : IDisposable
     }
 
     [Fact]
+    public void Overwriting_existing_file_archives_previous_version()
+    {
+        string versionsRoot = Path.Combine(Path.GetDirectoryName(_srcDir)!, "versions");
+        var versions = new FileSystemVersionStore(versionsRoot);
+        File.WriteAllText(Path.Combine(_dstDir, "a.txt"), "old content");
+
+        byte[] newContent = Encoding.UTF8.GetBytes("new content");
+        byte[] hash = SHA256.HashData(newContent);
+        var entry = new FileIndexEntry("a.txt", newContent.Length, DateTimeOffset.UnixEpoch, hash,
+            [new ChunkInfo(0, newContent.Length, hash)]);
+        var source = new MemoryBlockSource([new(hash, newContent)]);
+
+        FileAssembler.Write(_dstDir, entry, source, versions);
+
+        Assert.Equal("new content", File.ReadAllText(Path.Combine(_dstDir, "a.txt")));
+        string archived = Assert.Single(versions.ListVersions("a.txt"));
+        Assert.Equal("old content", File.ReadAllText(archived));
+    }
+
+    [Fact]
+    public void New_file_creates_no_version()
+    {
+        string versionsRoot = Path.Combine(Path.GetDirectoryName(_srcDir)!, "versions");
+        var versions = new FileSystemVersionStore(versionsRoot);
+
+        byte[] content = Encoding.UTF8.GetBytes("fresh");
+        byte[] hash = SHA256.HashData(content);
+        var entry = new FileIndexEntry("new.txt", content.Length, DateTimeOffset.UnixEpoch, hash,
+            [new ChunkInfo(0, content.Length, hash)]);
+
+        FileAssembler.Write(_dstDir, entry, new MemoryBlockSource([new(hash, content)]), versions);
+
+        Assert.Empty(versions.ListVersions("new.txt"));
+    }
+
+    [Fact]
     public void Preserves_modification_time()
     {
         File.WriteAllBytes(Path.Combine(_srcDir, "f.bin"), Encoding.UTF8.GetBytes("data"));

@@ -10,7 +10,7 @@ namespace Porta.Core.Sync;
 /// </summary>
 public static class FileAssembler
 {
-    public static void Write(string rootPath, FileIndexEntry entry, IBlockSource blocks)
+    public static void Write(string rootPath, FileIndexEntry entry, IBlockSource blocks, IVersionStore? versions = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
         ArgumentNullException.ThrowIfNull(entry);
@@ -40,6 +40,10 @@ public static class FileAssembler
                 if (!hasher.GetHashAndReset().AsSpan().SequenceEqual(entry.ContentHash))
                     throw new InvalidDataException($"Контент-хеш собранного файла не совпал: {entry.RelativePath}.");
             }
+
+            // Сохранить прежнюю версию до замены (архивируем существующий файл).
+            if (File.Exists(fullPath))
+                versions?.Archive(fullPath, entry.RelativePath);
 
             File.Move(tempPath, fullPath, overwrite: true);
             File.SetLastWriteTimeUtc(fullPath, entry.ModifiedAt.UtcDateTime);

@@ -28,11 +28,11 @@ public class SyncProtocolTests : IDisposable
     private byte[] ReceiverFile(string relativePath)
         => File.ReadAllBytes(Path.Combine(_receiverDir, relativePath.Replace('/', Path.DirectorySeparatorChar)));
 
-    private async Task<SyncResult> RunSyncAsync()
+    private async Task<SyncResult> RunSyncAsync(IVersionStore? versions = null)
     {
         var (a, b) = ConnectedChannels.Create();
         Task serve = SyncProtocol.ServeAsync(b, _senderDir, "s1");
-        Task<SyncResult> pull = SyncProtocol.PullAsync(a, _receiverDir, "s1");
+        Task<SyncResult> pull = SyncProtocol.PullAsync(a, _receiverDir, "s1", versions);
         await Task.WhenAll(serve, pull);
         return pull.Result;
     }
@@ -65,6 +65,22 @@ public class SyncProtocolTests : IDisposable
 
         Assert.Equal(1, result.FilesUpdated); // только b.txt
         Assert.Equal("only on sender", Encoding.UTF8.GetString(ReceiverFile("b.txt")));
+    }
+
+    [Fact]
+    public async Task Overwriting_changed_file_preserves_previous_version()
+    {
+        SenderFile("a.txt", Encoding.UTF8.GetBytes("new content from sender"));
+        File.WriteAllText(Path.Combine(_receiverDir, "a.txt"), "old content on receiver");
+        string versionsRoot = Path.Combine(Path.GetDirectoryName(_senderDir)!, "versions");
+        var versions = new FileSystemVersionStore(versionsRoot);
+
+        SyncResult result = await RunSyncAsync(versions);
+
+        Assert.Equal(1, result.FilesUpdated);
+        Assert.Equal("new content from sender", Encoding.UTF8.GetString(ReceiverFile("a.txt")));
+        string archived = Assert.Single(versions.ListVersions("a.txt"));
+        Assert.Equal("old content on receiver", File.ReadAllText(archived));
     }
 
     [Fact]
