@@ -1,3 +1,5 @@
+using MessagePack;
+
 namespace Porta.Core.Indexing;
 
 /// <summary>
@@ -9,13 +11,15 @@ namespace Porta.Core.Indexing;
 /// <param name="ModifiedAt">Время последнего изменения (UTC).</param>
 /// <param name="ContentHash">SHA-256 всего содержимого файла.</param>
 /// <param name="Chunks">Блоки файла в порядке следования.</param>
+[MessagePackObject]
 public sealed record FileIndexEntry(
-    string RelativePath,
-    long Size,
-    DateTimeOffset ModifiedAt,
-    byte[] ContentHash,
-    IReadOnlyList<ChunkInfo> Chunks)
+    [property: Key(0)] string RelativePath,
+    [property: Key(1)] long Size,
+    [property: Key(2)] DateTimeOffset ModifiedAt,
+    [property: Key(3)] byte[] ContentHash,
+    [property: Key(4)] IReadOnlyList<ChunkInfo> Chunks)
 {
     /// <summary>Контент-хеш в hex-виде.</summary>
+    [IgnoreMember]
     public string ContentHashHex => Convert.ToHexString(ContentHash);
 }
