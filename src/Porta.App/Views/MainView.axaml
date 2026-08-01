@@ -3,16 +3,63 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Porta.App.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
              x:Class="Porta.App.Views.MainView"
              x:DataType="vm:MainViewModel">
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <DockPanel Margin="16">
+        <!-- Шапка: личность устройства -->
+        <Border DockPanel.Dock="Top" Padding="16" CornerRadius="8"
+                BorderThickness="1" BorderBrush="Gray" Margin="0,0,0,16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding DeviceName}" FontSize="20" FontWeight="Bold" />
+                <TextBlock Text="{Binding DeviceId}" FontFamily="monospace" FontSize="12"
+                           TextWrapping="Wrap" Opacity="0.9" />
+            </StackPanel>
+        </Border>
+
+        <TabControl>
+            <!-- Хранилища -->
+            <TabItem Header="Хранилища">
+                <DockPanel Margin="0,12,0,0">
+                    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="12"
+                            BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Добавить хранилище" FontWeight="SemiBold" />
+                            <TextBox PlaceholderText="Имя" Text="{Binding Storages.NewName}" />
+                            <TextBox PlaceholderText="Путь к папке" Text="{Binding Storages.NewPath}" />
+                            <Button Content="Добавить" HorizontalAlignment="Right"
+                                    Command="{Binding Storages.AddCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox ItemsSource="{Binding Storages.Items}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:StorageItem">
+                                <StackPanel Spacing="2" Margin="0,4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding LocalPath}" Opacity="0.7" FontSize="12" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Устройства -->
+            <TabItem Header="Устройства">
+                <ListBox ItemsSource="{Binding Devices.Items}" Margin="0,12,0,0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DeviceItem">
+                            <StackPanel Spacing="2" Margin="0,4">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
+                                           FontFamily="monospace" FontSize="12" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
 </UserControl>
