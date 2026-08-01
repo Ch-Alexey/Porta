@@ -35,7 +35,7 @@ public class VersionedSyncTests : IDisposable
         var repoB = new FileIndexRepository(_dbB.Database);
         var (chA, chB) = ConnectedChannels.Create();
 
-        Task serve = VersionedSync.ServeAsync(chA, repoA, _folderA, "s1", IdA);
+        Task serve = VersionedSync.ServeAsync(chA, repoA, id => id == "s1" ? _folderA : null, IdA);
         Task<SyncApplyReport> pull = VersionedSync.PullAsync(
             chB, repoB, _folderB, "s1", IdB, IdA, clock: new MutableTimeProvider());
 

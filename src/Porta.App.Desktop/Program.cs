@@ -18,12 +18,24 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Композиция: ядро + mDNS-обнаружение из инфраструктуры.
+        // Композиция: ядро + mDNS-обнаружение + приём/запуск синка (QUIC) из инфраструктуры.
         AppEnvironment environment = AppEnvironment.Create();
         App.InjectedData = environment;
         App.InjectedDiscovery = TryStartDiscovery(environment);
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        var syncListener = new BackgroundSyncListener(environment, SyncPort);
+        syncListener.Start();
+        App.InjectedSync = new QuicSyncController(environment);
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            syncListener.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            (App.InjectedDiscovery as IDisposable)?.Dispose();
+        }
     }
 
     private static IDeviceDiscovery? TryStartDiscovery(AppEnvironment environment)

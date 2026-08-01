@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Porta.App.Services;
 using Porta.App.ViewModels;
 using Porta.App.Views;
 using Porta.Core.App;
@@ -16,6 +17,9 @@ public partial class App : Application
     /// <summary>Обнаружение устройств, внедряемое головой (напр. mDNS из инфраструктуры).</summary>
     public static IDeviceDiscovery? InjectedDiscovery { get; set; }
 
+    /// <summary>Контроллер синхронизации, внедряемый головой (QUIC-транспорт).</summary>
+    public static ISyncController? InjectedSync { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -27,7 +31,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         IAppData data = InjectedData ?? AppEnvironment.Create();
-        MainViewModel CreateViewModel() => new(data, InjectedDiscovery);
+        MainViewModel CreateViewModel() => new(data, InjectedDiscovery, dispatcher: null, InjectedSync);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Porta.App.Services;
 using Porta.Core.Discovery;
 using Porta.Core.Identity;
@@ -23,4 +26,16 @@ internal sealed class FakeDeviceDiscovery : IDeviceDiscovery
 
     public void RaiseDiscovered(DiscoveredPeer peer) => PeerDiscovered?.Invoke(peer);
     public void RaiseLost(DeviceId deviceId) => PeerLost?.Invoke(deviceId);
+}
+
+/// <summary>Контроллер синка, записывающий вызовы (для тестов VM).</summary>
+internal sealed class FakeSyncController : ISyncController
+{
+    public List<DiscoveredPeer> Calls { get; } = [];
+
+    public Task<string> SyncWithPeerAsync(DiscoveredPeer peer, CancellationToken cancellationToken = default)
+    {
+        Calls.Add(peer);
+        return Task.FromResult("ok");
+    }
 }

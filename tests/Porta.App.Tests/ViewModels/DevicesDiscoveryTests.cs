@@ -56,4 +56,29 @@ public class DevicesDiscoveryTests
         var vm = new DevicesViewModel(new FakeAppData(), discovery: null, new ImmediateDispatcher());
         Assert.Empty(vm.DiscoveredPeers);
     }
+
+    [Fact]
+    public async Task Sync_with_found_calls_controller_for_each_peer()
+    {
+        var discovery = new FakeDeviceDiscovery();
+        var controller = new FakeSyncController();
+        var vm = new DevicesViewModel(new FakeAppData(), discovery, new ImmediateDispatcher(), controller);
+        using var a = DeviceIdentity.Generate();
+        using var b = DeviceIdentity.Generate();
+        discovery.RaiseDiscovered(Peer(a.Id, "A"));
+        discovery.RaiseDiscovered(Peer(b.Id, "B"));
+
+        Assert.True(vm.CanSync);
+        await vm.SyncWithFoundCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, controller.Calls.Count);
+        Assert.NotNull(vm.StatusMessage);
+    }
+
+    [Fact]
+    public void CanSync_is_false_without_controller_or_peers()
+    {
+        var vm = new DevicesViewModel(new FakeAppData(), new FakeDeviceDiscovery(), new ImmediateDispatcher(), sync: null);
+        Assert.False(vm.CanSync);
+    }
 }

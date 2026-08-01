@@ -8,12 +8,16 @@ namespace Porta.App.ViewModels;
 /// <summary>Оболочка приложения: личность устройства + вкладки.</summary>
 public partial class MainViewModel : ViewModelBase
 {
-    public MainViewModel(IAppData data, IDeviceDiscovery? discovery = null, IUiDispatcher? dispatcher = null)
+    public MainViewModel(
+        IAppData data,
+        IDeviceDiscovery? discovery = null,
+        IUiDispatcher? dispatcher = null,
+        ISyncController? sync = null)
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
         Storages = new StoragesViewModel(data.Storages);
-        Devices = new DevicesViewModel(data, discovery, dispatcher);
+        Devices = new DevicesViewModel(data, discovery, dispatcher, sync);
     }
 
     [ObservableProperty]

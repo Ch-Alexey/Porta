@@ -62,7 +62,7 @@ public class VersionedSyncOverQuicTests : IDisposable
         await using PeerSession cs = await clientSessionTask;
         await using PeerSession ss = await serverSessionTask;
 
-        Task serve = VersionedSync.ServeAsync(ss.Control, Repo("server"), _folderA, "s1", serverId.Id, cancellationToken: ct);
+        Task serve = VersionedSync.ServeAsync(ss.Control, Repo("server"), id => id == "s1" ? _folderA : null, serverId.Id, cancellationToken: ct);
         Task<SyncApplyReport> pull = VersionedSync.PullAsync(
             cs.Control, Repo("client"), _folderB, "s1", clientId.Id, serverId.Id, cancellationToken: ct);
         await Task.WhenAll(serve, pull);

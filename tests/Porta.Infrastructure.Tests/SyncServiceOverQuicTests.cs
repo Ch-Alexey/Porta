@@ -63,12 +63,50 @@ public class SyncServiceOverQuicTests : IDisposable
         var serviceB = new SyncService(transportB, idB, "B", new DeviceRepositoryTrustPolicy(devicesB), indexB);
 
         await using ITransportListener listener = await transportA.ListenAsync(new IPEndPoint(IPAddress.Loopback, 0), ct);
-        Task serve = serviceA.ServeOnceAsync(listener, "s1", _folderA, cancellationToken: ct);
+        Task serve = serviceA.ServeOnceAsync(listener, id => id == "s1" ? _folderA : null, cancellationToken: ct);
         Task<SyncApplyReport> pull = serviceB.PullAsync(listener.LocalEndPoint, idA.Id, "s1", _folderB, cancellationToken: ct);
         await Task.WhenAll(serve, pull);
 
         Assert.Equal(1, (await pull).Accepted);
         Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(_folderB, "file.bin"), ct));
+    }
+
+    [Fact]
+    public async Task Serves_the_requested_storage_by_id()
+    {
+        if (!QuicTransport.IsSupported)
+            return;
+
+        string dirS1 = Path.Combine(_baseDir, "s1");
+        string dirS2 = Path.Combine(_baseDir, "s2");
+        Directory.CreateDirectory(dirS1);
+        Directory.CreateDirectory(dirS2);
+        await File.WriteAllTextAsync(Path.Combine(dirS1, "one.txt"), "storage one");
+        await File.WriteAllTextAsync(Path.Combine(dirS2, "two.txt"), "storage two");
+
+        using var idA = DeviceIdentity.Generate();
+        using var idB = DeviceIdentity.Generate();
+        CancellationToken ct = new CancellationTokenSource(TimeSpan.FromSeconds(20)).Token;
+
+        (DeviceRepository devicesA, FileIndexRepository indexA) = Repos("A");
+        (DeviceRepository devicesB, FileIndexRepository indexB) = Repos("B");
+        Trust(devicesA, idB, "B");
+        Trust(devicesB, idA, "A");
+
+        using var transportA = new QuicTransport(idA);
+        using var transportB = new QuicTransport(idB);
+        var serviceA = new SyncService(transportA, idA, "A", new DeviceRepositoryTrustPolicy(devicesA), indexA);
+        var serviceB = new SyncService(transportB, idB, "B", new DeviceRepositoryTrustPolicy(devicesB), indexB);
+
+        await using ITransportListener listener = await transportA.ListenAsync(new IPEndPoint(IPAddress.Loopback, 0), ct);
+        string? Resolve(string id) => id == "s1" ? dirS1 : id == "s2" ? dirS2 : null;
+        Task serve = serviceA.ServeOnceAsync(listener, Resolve, cancellationToken: ct);
+        Task<SyncApplyReport> pull = serviceB.PullAsync(listener.LocalEndPoint, idA.Id, "s2", _folderB, cancellationToken: ct);
+        await Task.WhenAll(serve, pull);
+
+        // Пришло именно s2.
+        Assert.True(File.Exists(Path.Combine(_folderB, "two.txt")));
+        Assert.False(File.Exists(Path.Combine(_folderB, "one.txt")));
     }
 
     public void Dispose()

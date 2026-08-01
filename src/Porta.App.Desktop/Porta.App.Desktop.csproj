@@ -5,6 +5,8 @@
     See https://docs.avaloniaui.net/docs/guides/platforms/platform-specific-code/dotnet for more details.-->
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- Десктоп-голова использует QUIC (Win/macOS/Linux), гейтится QuicTransport.IsSupported. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>

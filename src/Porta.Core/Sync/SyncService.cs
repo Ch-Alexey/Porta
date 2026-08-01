@@ -53,11 +53,13 @@ public sealed class SyncService
             .ConfigureAwait(false);
     }
 
-    /// <summary>Отдающая сторона: принять одно соединение и отдать хранилище.</summary>
+    /// <summary>
+    /// Отдающая сторона: принять одно соединение и отдать запрошенное хранилище.
+    /// Папку определяет <paramref name="resolveFolder"/> (storageId → путь, null — нет доступа).
+    /// </summary>
     public async Task ServeOnceAsync(
         ITransportListener listener,
-        string storageId,
-        string folder,
+        Func<string, string?> resolveFolder,
         IgnoreRules? ignore = null,
         CancellationToken cancellationToken = default)
     {
@@ -66,7 +68,7 @@ public sealed class SyncService
             connection, _trust, _selfName, isInitiator: false, cancellationToken).ConfigureAwait(false);
 
         await VersionedSync.ServeAsync(
-            session.Control, _index, folder, storageId, _self.Id, ignore, cancellationToken: cancellationToken)
+            session.Control, _index, resolveFolder, _self.Id, ignore, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 }

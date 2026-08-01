@@ -93,7 +93,13 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Text="Найдены в сети" FontWeight="SemiBold" Opacity="0.8" Margin="0,8,0,0" />
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Right" Content="Синхронизировать"
+                                        Command="{Binding Devices.SyncWithFoundCommand}"
+                                        IsEnabled="{Binding Devices.CanSync}" />
+                                <TextBlock Text="Найдены в сети" FontWeight="SemiBold" Opacity="0.8"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
                             <ItemsControl ItemsSource="{Binding Devices.DiscoveredPeers}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:DiscoveredPeerItem">

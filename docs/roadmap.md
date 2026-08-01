@@ -50,7 +50,7 @@
 - [x] Абстракция данных (`IAppData`/интерфейсы репозиториев) → тестируемые VM (`Porta.App.Tests`) + design-time превью.
 - [x] Связывание из UI по токену (показать приглашение / принять токен → доверенное устройство).
 - [x] `SyncService` (оркестратор синка) + `DeviceRepositoryTrustPolicy` (доверие из БД). См. [features/19-sync-service](features/19-sync-service.md).
-- [ ] UI-кнопка синка: композиция транспорта в приложение + адрес пира (discovery/ручной) + прогресс.
+- [x] UI-кнопка синка: фоновый QUIC-приём + `QuicSyncController` + «Синхронизировать» по найденным. См. [features/21-sync-from-ui](features/21-sync-from-ui.md).
 - [ ] Рендер QR + сканирование камерой; диалог выбора папки.
 - [x] Discovery-устройства в UI (mDNS): приложение объявляет себя и показывает найденные в сети. См. [features/20-discovery-ui](features/20-discovery-ui.md).
 - [ ] Вкладка «Медиа».

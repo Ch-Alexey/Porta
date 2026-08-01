@@ -26,30 +26,39 @@ public static class VersionedSync
         return versioned;
     }
 
-    /// <summary>Отдающая сторона: отдать версионированный индекс и блоки по запросу.</summary>
+    /// <summary>
+    /// Отдающая сторона: по запрошенному storageId отдать версионированный индекс и блоки.
+    /// Папку хранилища определяет <paramref name="resolveFolder"/> (null → хранилище
+    /// неизвестно/недоступно, отдаём пустой индекс).
+    /// </summary>
     public static async Task ServeAsync(
         MessageChannel channel,
         FileIndexRepository repository,
-        string folder,
-        string storageId,
+        Func<string, string?> resolveFolder,
         DeviceId localDeviceId,
         IgnoreRules? ignore = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
+        ArgumentNullException.ThrowIfNull(resolveFolder);
 
-        _ = await channel.ReadAsync<FolderIndexRequest>(cancellationToken).ConfigureAwait(false);
+        FolderIndexRequest requestIndex = await channel.ReadAsync<FolderIndexRequest>(cancellationToken).ConfigureAwait(false);
+        string storageId = requestIndex.StorageId;
+        string? folder = resolveFolder(storageId);
 
-        IReadOnlyList<VersionedFileEntry> index = Rescan(repository, storageId, folder, localDeviceId, ignore);
+        IReadOnlyList<VersionedFileEntry> index = folder is null
+            ? []
+            : Rescan(repository, storageId, folder, localDeviceId, ignore);
         await channel.WriteAsync(new VersionedFolderIndexMessage(storageId, index), cancellationToken).ConfigureAwait(false);
 
-        var reader = new FolderBlockReader(folder, index.Select(v => v.Entry).ToList());
+        var reader = folder is null ? null : new FolderBlockReader(folder, index.Select(v => v.Entry).ToList());
         BlockRequestMessage request = await channel.ReadAsync<BlockRequestMessage>(cancellationToken).ConfigureAwait(false);
 
         var served = new List<BlockData>(request.Hashes.Count);
-        foreach (byte[] hash in request.Hashes)
-            if (reader.TryGet(hash, out byte[] data))
-                served.Add(new BlockData(hash, data));
+        if (reader is not null)
+            foreach (byte[] hash in request.Hashes)
+                if (reader.TryGet(hash, out byte[] data))
+                    served.Add(new BlockData(hash, data));
 
         await channel.WriteAsync(new BlockResponseMessage(served), cancellationToken).ConfigureAwait(false);
 
