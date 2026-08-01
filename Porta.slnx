@@ -6,6 +6,7 @@
     <Project Path="src/Porta.Infrastructure/Porta.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Porta.App.Tests/Porta.App.Tests.csproj" />
     <Project Path="tests/Porta.Core.Tests/Porta.Core.Tests.csproj" />
     <Project Path="tests/Porta.Infrastructure.Tests/Porta.Infrastructure.Tests.csproj" />
   </Folder>

@@ -6,12 +6,12 @@ namespace Porta.App.ViewModels;
 /// <summary>Оболочка приложения: личность устройства + вкладки.</summary>
 public partial class MainViewModel : ViewModelBase
 {
-    public MainViewModel(AppEnvironment environment)
+    public MainViewModel(IAppData data)
     {
-        DeviceName = environment.DeviceName;
-        DeviceId = environment.Identity.Id.ToDisplayString();
-        Storages = new StoragesViewModel(environment);
-        Devices = new DevicesViewModel(environment);
+        DeviceName = data.DeviceName;
+        DeviceId = data.DeviceId;
+        Storages = new StoragesViewModel(data.Storages);
+        Devices = new DevicesViewModel(data);
     }
 
     [ObservableProperty]

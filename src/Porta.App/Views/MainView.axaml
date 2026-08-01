@@ -3,9 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Porta.App.ViewModels"
+             xmlns:design="using:Porta.App.Design"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
              x:Class="Porta.App.Views.MainView"
              x:DataType="vm:MainViewModel">
+
+    <Design.DataContext>
+        <design:DesignMainViewModel />
+    </Design.DataContext>
 
     <DockPanel Margin="16">
         <!-- Шапка: личность устройства -->
@@ -48,17 +53,43 @@
 
             <!-- Устройства -->
             <TabItem Header="Устройства">
-                <ListBox ItemsSource="{Binding Devices.Items}" Margin="0,12,0,0">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:DeviceItem">
-                            <StackPanel Spacing="2" Margin="0,4">
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
-                                           FontFamily="monospace" FontSize="12" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <DockPanel Margin="0,12,0,0">
+                    <!-- Связывание -->
+                    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="12"
+                            BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Добавить устройство" FontWeight="SemiBold" />
+                            <Button Content="Показать приглашение"
+                                    Command="{Binding Devices.GenerateInvitationCommand}" />
+                            <TextBox Text="{Binding Devices.InvitationToken}" IsReadOnly="True"
+                                     FontFamily="monospace" FontSize="11" TextWrapping="Wrap"
+                                     IsVisible="{Binding Devices.InvitationToken, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <Separator />
+
+                            <TextBlock Text="Подключиться по токену" FontWeight="SemiBold" />
+                            <TextBox PlaceholderText="Имя устройства" Text="{Binding Devices.NewDeviceName}" />
+                            <TextBox PlaceholderText="porta:…" Text="{Binding Devices.PastedToken}"
+                                     FontFamily="monospace" FontSize="11" />
+                            <Button Content="Подключиться" HorizontalAlignment="Right"
+                                    Command="{Binding Devices.ConnectCommand}" />
+                            <TextBlock Text="{Binding Devices.StatusMessage}" Opacity="0.8"
+                                       IsVisible="{Binding Devices.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox ItemsSource="{Binding Devices.Items}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DeviceItem">
+                                <StackPanel Spacing="2" Margin="0,4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
+                                               FontFamily="monospace" FontSize="12" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
             </TabItem>
         </TabControl>
     </DockPanel>

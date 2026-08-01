@@ -5,7 +5,7 @@ using Porta.Core.Model;
 namespace Porta.Core.Data;
 
 /// <summary>Хранилище доверенных устройств. См. docs/features/02-data-model.md.</summary>
-public sealed class DeviceRepository
+public sealed class DeviceRepository : IDeviceRepository
 {
     private readonly PortaDatabase _db;
 

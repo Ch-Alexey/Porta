@@ -1,5 +1,7 @@
 using Porta.Core.Data;
 using Porta.Core.Identity;
+using Porta.Core.Model;
+using Porta.Core.Pairing;
 
 namespace Porta.Core.App;
 
@@ -7,7 +9,7 @@ namespace Porta.Core.App;
 /// Инициализация приложения: папка данных, личность устройства, БД и репозитории.
 /// Платформонезависимо. Используется UI как единая точка доступа к ядру.
 /// </summary>
-public sealed class AppEnvironment
+public sealed class AppEnvironment : IAppData
 {
     private AppEnvironment(
         DeviceIdentity identity,
@@ -40,6 +42,28 @@ public sealed class AppEnvironment
 
     /// <summary>Папка с данными приложения (ключ, БД).</summary>
     public string DataDirectory { get; }
+
+    string IAppData.DeviceId => Identity.Id.ToDisplayString();
+    IStorageRepository IAppData.Storages => Storages;
+    IDeviceRepository IAppData.Devices => Devices;
+
+    string IAppData.CreateInvitation()
+    {
+        // Адреса добавятся, когда транспорт/discovery будут подключены к UI.
+        PairingToken token = new PairingService().CreateInvitation(Identity, [], TimeSpan.FromMinutes(5));
+        return PairingTokenCodec.Encode(token);
+    }
+
+    TrustedDevice IAppData.AcceptInvitation(string token, string deviceName)
+    {
+        PairingToken decoded = PairingTokenCodec.Decode(token);
+        string name = string.IsNullOrWhiteSpace(deviceName) ? "Устройство" : deviceName.Trim();
+        TrustedDevice trusted = new PairingService().CreateInviterTrust(decoded, name);
+
+        if (Devices.Get(trusted.Id) is null)
+            Devices.Add(trusted);
+        return trusted;
+    }
 
     /// <summary>
     /// Инициализировать окружение: создать/загрузить личность и БД в папке данных.

@@ -5,7 +5,7 @@ using Porta.Core.Model;
 namespace Porta.Core.Data;
 
 /// <summary>Хранилище записей о папках синхронизации и их привязке к устройствам.</summary>
-public sealed class StorageRepository
+public sealed class StorageRepository : IStorageRepository
 {
     private readonly PortaDatabase _db;
 

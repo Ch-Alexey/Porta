@@ -2,7 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Porta.Core.App;
+using Porta.Core.Data;
 using Porta.Core.Model;
 
 namespace Porta.App.ViewModels;
@@ -10,11 +10,11 @@ namespace Porta.App.ViewModels;
 /// <summary>Вкладка «Хранилища»: список папок синхронизации и добавление новой.</summary>
 public partial class StoragesViewModel : ViewModelBase
 {
-    private readonly AppEnvironment _environment;
+    private readonly IStorageRepository _storages;
 
-    public StoragesViewModel(AppEnvironment environment)
+    public StoragesViewModel(IStorageRepository storages)
     {
-        _environment = environment;
+        _storages = storages;
         Reload();
     }
 
@@ -41,7 +41,7 @@ public partial class StoragesViewModel : ViewModelBase
             Paused: false,
             DateTimeOffset.UtcNow);
 
-        _environment.Storages.Add(storage);
+        _storages.Add(storage);
         NewName = string.Empty;
         NewPath = string.Empty;
         Reload();
@@ -50,7 +50,7 @@ public partial class StoragesViewModel : ViewModelBase
     private void Reload()
     {
         Items.Clear();
-        foreach (Storage storage in _environment.Storages.List())
+        foreach (Storage storage in _storages.List())
             Items.Add(new StorageItem(storage.Name, storage.LocalPath));
     }
 }
