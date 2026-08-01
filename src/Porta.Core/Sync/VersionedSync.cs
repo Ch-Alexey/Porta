@@ -52,6 +52,17 @@ public static class VersionedSync
                 served.Add(new BlockData(hash, data));
 
         await channel.WriteAsync(new BlockResponseMessage(served), cancellationToken).ConfigureAwait(false);
+
+        // Подтверждение приёма: даём принимающей стороне дочитать ответ до закрытия.
+        // Best-effort — если она уже закрыла соединение, данные всё равно доставлены.
+        try
+        {
+            _ = await channel.ReadAsync<SyncCompleteMessage>(cancellationToken).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Соединение закрыто второй стороной после получения данных — это норма.
+        }
     }
 
     /// <summary>Принимающая сторона: получить удалённый индекс, разрешить конфликты, применить.</summary>
@@ -87,6 +98,18 @@ public static class VersionedSync
         SyncApplyReport report = SyncApplier.Apply(folder, localIndex, remote.Entries, remoteDeviceId, source, versions, clock);
 
         repository.Replace(storageId, MergeAfterPull(localByPath, remote.Entries));
+
+        // Подтвердить приём — сигнал отдающей стороне, что можно закрывать соединение.
+        // Best-effort: данные уже применены, обрыв на этом шаге не влияет на результат.
+        try
+        {
+            await channel.WriteAsync(new SyncCompleteMessage(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Отдающая сторона уже закрыла соединение — это норма.
+        }
+
         return report;
     }
 
