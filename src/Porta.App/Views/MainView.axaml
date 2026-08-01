@@ -78,17 +78,35 @@
                         </StackPanel>
                     </Border>
 
-                    <ListBox ItemsSource="{Binding Devices.Items}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DeviceItem">
-                                <StackPanel Spacing="2" Margin="0,4">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
-                                               FontFamily="monospace" FontSize="12" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <ScrollViewer>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Доверенные" FontWeight="SemiBold" Opacity="0.8" />
+                            <ItemsControl ItemsSource="{Binding Devices.Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DeviceItem">
+                                        <StackPanel Spacing="2" Margin="0,4">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
+                                                       FontFamily="monospace" FontSize="12" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Найдены в сети" FontWeight="SemiBold" Opacity="0.8" Margin="0,8,0,0" />
+                            <ItemsControl ItemsSource="{Binding Devices.DiscoveredPeers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DiscoveredPeerItem">
+                                        <StackPanel Spacing="2" Margin="0,4">
+                                            <TextBlock Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding DeviceId}" Opacity="0.6"
+                                                       FontFamily="monospace" FontSize="11" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </TabItem>
         </TabControl>

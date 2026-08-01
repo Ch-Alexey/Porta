@@ -4,11 +4,18 @@ using Avalonia.Markup.Xaml;
 using Porta.App.ViewModels;
 using Porta.App.Views;
 using Porta.Core.App;
+using Porta.Core.Discovery;
 
 namespace Porta.App;
 
 public partial class App : Application
 {
+    /// <summary>Данные приложения, внедряемые головой (иначе создаются по умолчанию).</summary>
+    public static IAppData? InjectedData { get; set; }
+
+    /// <summary>Обнаружение устройств, внедряемое головой (напр. mDNS из инфраструктуры).</summary>
+    public static IDeviceDiscovery? InjectedDiscovery { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -19,25 +26,20 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        AppEnvironment environment = AppEnvironment.Create();
+        IAppData data = InjectedData ?? AppEnvironment.Create();
+        MainViewModel CreateViewModel() => new(data, InjectedDiscovery);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(environment)
-            };
+            desktop.MainWindow = new MainWindow { DataContext = CreateViewModel() };
         }
         else if (ApplicationLifetime is IActivityApplicationLifetime singleViewFactoryApplicationLifetime)
         {
-            singleViewFactoryApplicationLifetime.MainViewFactory = () => new MainView { DataContext = new MainViewModel(environment) };
+            singleViewFactoryApplicationLifetime.MainViewFactory = () => new MainView { DataContext = CreateViewModel() };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainView
-            {
-                DataContext = new MainViewModel(environment)
-            };
+            singleViewPlatform.MainView = new MainView { DataContext = CreateViewModel() };
         }
 
         base.OnFrameworkInitializationCompleted();

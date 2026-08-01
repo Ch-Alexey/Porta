@@ -1,24 +1,41 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Porta.App.Services;
 using Porta.Core.App;
+using Porta.Core.Discovery;
+using Porta.Core.Identity;
 using Porta.Core.Model;
 
 namespace Porta.App.ViewModels;
 
-/// <summary>Вкладка «Устройства»: доверенные устройства + связывание по токену.</summary>
+/// <summary>
+/// Вкладка «Устройства»: доверенные устройства, найденные в сети (mDNS) и связывание по токену.
+/// </summary>
 public partial class DevicesViewModel : ViewModelBase
 {
     private readonly IAppData _data;
+    private readonly IUiDispatcher _dispatcher;
 
-    public DevicesViewModel(IAppData data)
+    public DevicesViewModel(IAppData data, IDeviceDiscovery? discovery = null, IUiDispatcher? dispatcher = null)
     {
         _data = data;
+        _dispatcher = dispatcher ?? new AvaloniaUiDispatcher();
         Reload();
+
+        if (discovery is not null)
+        {
+            discovery.PeerDiscovered += OnPeerDiscovered;
+            discovery.PeerLost += OnPeerLost;
+        }
     }
 
     public ObservableCollection<DeviceItem> Items { get; } = [];
+
+    /// <summary>Устройства, найденные в локальной сети (ещё не обязательно доверенные).</summary>
+    public ObservableCollection<DiscoveredPeerItem> DiscoveredPeers { get; } = [];
 
     /// <summary>Токен приглашения этого устройства (для QR/копирования).</summary>
     [ObservableProperty]
@@ -57,6 +74,21 @@ public partial class DevicesViewModel : ViewModelBase
         }
     }
 
+    private void OnPeerDiscovered(DiscoveredPeer peer) => _dispatcher.Post(() =>
+    {
+        string id = peer.DeviceId.ToString();
+        if (DiscoveredPeers.All(p => p.DeviceId != id))
+            DiscoveredPeers.Add(new DiscoveredPeerItem(peer.Name, id));
+    });
+
+    private void OnPeerLost(DeviceId deviceId) => _dispatcher.Post(() =>
+    {
+        string id = deviceId.ToString();
+        DiscoveredPeerItem? existing = DiscoveredPeers.FirstOrDefault(p => p.DeviceId == id);
+        if (existing is not null)
+            DiscoveredPeers.Remove(existing);
+    });
+
     private void Reload()
     {
         Items.Clear();
@@ -65,5 +97,8 @@ public partial class DevicesViewModel : ViewModelBase
     }
 }
 
-/// <summary>Строка списка устройств для отображения.</summary>
+/// <summary>Строка списка доверенных устройств для отображения.</summary>
 public sealed record DeviceItem(string Name, string DeviceId);
+
+/// <summary>Строка списка найденных в сети устройств.</summary>
+public sealed record DiscoveredPeerItem(string Name, string DeviceId);
