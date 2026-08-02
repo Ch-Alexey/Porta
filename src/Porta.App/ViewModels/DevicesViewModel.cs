@@ -10,6 +10,7 @@ using Porta.Core.App;
 using Porta.Core.Discovery;
 using Porta.Core.Identity;
 using Porta.Core.Model;
+using Porta.Core.Sync;
 
 namespace Porta.App.ViewModels;
 

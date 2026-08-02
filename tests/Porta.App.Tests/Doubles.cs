@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Porta.App.Services;
 using Porta.Core.Discovery;
 using Porta.Core.Identity;
+using Porta.Core.Sync;
 
 namespace Porta.App.Tests;
 

@@ -1,11 +1,11 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Porta.App.Services;
 using Porta.App.ViewModels;
 using Porta.App.Views;
 using Porta.Core.App;
 using Porta.Core.Discovery;
+using Porta.Core.Sync;
 
 namespace Porta.App;
 

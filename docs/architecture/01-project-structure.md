@@ -66,11 +66,11 @@ dotnet test Porta.slnx --filter "Category!=Integration"
 > mDNS требует рабочего multicast; тесты QUIC требуют libmsquic (без неё тихо
 > пропускаются).
 
-Полный прогон с QUIC (macOS + Homebrew libmsquic):
-
-```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/opt/libmsquic/lib dotnet test Porta.slnx
-```
+**libmsquic на macOS:** `Directory.Build.targets` копирует `libmsquic.dylib` из Homebrew
+(`/opt/homebrew` или `/usr/local`) в вывод сборки, поэтому тесты QUIC и приложение работают
+**без** `DYLD_LIBRARY_PATH`. Для реальной поставки библиотеку нужно бандлить с приложением
+(установщик), а не полагаться на Homebrew. На CI (ubuntu) libmsquic нет — интеграционные
+тесты там отфильтровываются.
 
 Запуск десктоп-приложения:
 

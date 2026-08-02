@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Porta.App.Services;
 using Porta.Core.App;
 using Porta.Core.Data;
 using Porta.Core.Discovery;

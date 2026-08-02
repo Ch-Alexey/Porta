@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    macOS: .NET ищет libmsquic.dylib в папке приложения. Кладём её туда из Homebrew,
+    чтобы приложение и тесты работали без DYLD_LIBRARY_PATH. Для реальной поставки
+    библиотеку нужно бандлить с приложением (установщик), а не полагаться на Homebrew.
+  -->
+  <Target Name="CopyLibMsQuic" AfterTargets="Build;Publish"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <ItemGroup>
+      <MsQuicLib Include="/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib"
+                 Condition="Exists('/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib')" />
+      <MsQuicLib Include="/usr/local/opt/libmsquic/lib/libmsquic.dylib"
+                 Condition="Exists('/usr/local/opt/libmsquic/lib/libmsquic.dylib')" />
+    </ItemGroup>
+    <Copy Condition="'@(MsQuicLib)' != ''"
+          SourceFiles="@(MsQuicLib)"
+          DestinationFiles="$(OutDir)libmsquic.dylib"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

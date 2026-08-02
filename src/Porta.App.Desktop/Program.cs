@@ -3,6 +3,7 @@ using Avalonia;
 using Porta.App;
 using Porta.Core.App;
 using Porta.Core.Discovery;
+using Porta.Core.Sync;
 using Porta.Infrastructure.Discovery;
 
 namespace Porta.App.Desktop;
@@ -25,7 +26,16 @@ sealed class Program
 
         var syncListener = new BackgroundSyncListener(environment, SyncPort);
         syncListener.Start();
-        App.InjectedSync = new QuicSyncController(environment);
+        var syncController = new QuicSyncController(environment);
+        App.InjectedSync = syncController;
+
+        // Авто-синхро: при появлении доверенного устройства в сети синкаем автоматически.
+        AutoSyncCoordinator? autoSync = null;
+        if (App.InjectedDiscovery is not null)
+        {
+            autoSync = new AutoSyncCoordinator(App.InjectedDiscovery, environment.Devices, syncController);
+            autoSync.Start();
+        }
 
         try
         {
@@ -33,6 +43,7 @@ sealed class Program
         }
         finally
         {
+            autoSync?.Dispose();
             syncListener.DisposeAsync().AsTask().GetAwaiter().GetResult();
             (App.InjectedDiscovery as IDisposable)?.Dispose();
         }

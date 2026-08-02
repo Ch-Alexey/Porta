@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Porta.App.Services;
 using Porta.Core.App;
 using Porta.Core.Discovery;
+using Porta.Core.Sync;
 
 namespace Porta.App.ViewModels;
 
