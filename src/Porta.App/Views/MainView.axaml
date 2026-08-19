@@ -35,6 +35,20 @@
                             <TextBox PlaceholderText="Путь к папке" Text="{Binding Storages.NewPath}" />
                             <Button Content="Добавить" HorizontalAlignment="Right"
                                     Command="{Binding Storages.AddCommand}" />
+
+                            <Separator />
+
+                            <TextBlock Text="Поделиться папкой с устройством" FontWeight="SemiBold" />
+                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Хранилище"
+                                      ItemsSource="{Binding Storages.Items}"
+                                      SelectedItem="{Binding Storages.SelectedStorage}" />
+                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Устройство"
+                                      ItemsSource="{Binding Storages.TrustedDevices}"
+                                      SelectedItem="{Binding Storages.SelectedDevice}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="Убрать доступ" Command="{Binding Storages.UnshareCommand}" />
+                                <Button Content="Поделиться" Command="{Binding Storages.ShareCommand}" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
@@ -44,6 +58,9 @@
                                 <StackPanel Spacing="2" Margin="0,4">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding LocalPath}" Opacity="0.7" FontSize="12" />
+                                    <TextBlock Text="{Binding SharedWith, StringFormat='Общий доступ: {0}'}"
+                                               Opacity="0.6" FontSize="11"
+                                               IsVisible="{Binding SharedWith, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

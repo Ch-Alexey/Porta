@@ -53,6 +53,7 @@
 - [x] UI-кнопка синка: фоновый QUIC-приём + `QuicSyncController` + «Синхронизировать» по найденным. См. [features/21-sync-from-ui](features/21-sync-from-ui.md).
 - [x] Авто-синхронизация: при появлении доверенного устройства синк запускается автоматически (`AutoSyncCoordinator`). См. [features/22-auto-sync](features/22-auto-sync.md).
 - [x] Синк по локальным изменениям файлов (`FileSystemChangeNotifier` → авто-синк). См. [features/23-file-change-sync](features/23-file-change-sync.md).
+- [x] Выборочный доступ: связывание хранилищ↔устройств в UI, синк только расшаренных (`StorageSharing`). См. [features/24-storage-sharing](features/24-storage-sharing.md).
 - [ ] Рендер QR + сканирование камерой; диалог выбора папки.
 - [x] Discovery-устройства в UI (mDNS): приложение объявляет себя и показывает найденные в сети. См. [features/20-discovery-ui](features/20-discovery-ui.md).
 - [ ] Вкладка «Медиа».

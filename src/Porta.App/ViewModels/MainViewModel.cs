@@ -17,7 +17,7 @@ public partial class MainViewModel : ViewModelBase
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
-        Storages = new StoragesViewModel(data.Storages);
+        Storages = new StoragesViewModel(data.Storages, data.Devices);
         Devices = new DevicesViewModel(data, discovery, dispatcher, sync);
     }
 

@@ -33,7 +33,7 @@ public sealed class QuicSyncController(AppEnvironment environment) : ISyncContro
             new DeviceRepositoryTrustPolicy(environment.Devices), environment.FileIndex);
 
         int totalFiles = 0;
-        foreach (Storage storage in environment.Storages.List())
+        foreach (Storage storage in StorageSharing.SharedWith(environment.Storages, peer.DeviceId))
         {
             SyncApplyReport report = await service
                 .PullAsync(endpoint, peer.DeviceId, storage.Id, storage.LocalPath, cancellationToken: cancellationToken)
