@@ -44,6 +44,12 @@ public class AutoSyncCoordinatorTests
         }
     }
 
+    private sealed class FakeChanges : IChangeNotifier
+    {
+        public event Action? Changed;
+        public void Raise() => Changed?.Invoke();
+    }
+
     private static DiscoveredPeer Peer(DeviceId id) => new(id, "peer", [], DateTimeOffset.UnixEpoch);
 
     private static (DeviceRepository Repo, DeviceIdentity Identity) TrustedDevice(TempDatabase temp)
@@ -101,6 +107,39 @@ public class AutoSyncCoordinatorTests
 
         Assert.Equal(1, sync.Calls);
         peer.Dispose();
+    }
+
+    [Fact]
+    public void Local_change_syncs_known_trusted_peer()
+    {
+        using var temp = new TempDatabase();
+        (DeviceRepository repo, DeviceIdentity peer) = TrustedDevice(temp);
+        var discovery = new FakeDiscovery();
+        var changes = new FakeChanges();
+        var sync = new ControllableSync();
+        using var coordinator = new AutoSyncCoordinator(discovery, repo, sync, changes);
+        coordinator.Start();
+        discovery.Raise(Peer(peer.Id)); // устройство найдено → синк 1
+
+        changes.Raise(); // файл изменился → синк 2 с уже известным устройством
+
+        Assert.Equal(2, sync.Calls);
+        peer.Dispose();
+    }
+
+    [Fact]
+    public void Local_change_without_known_peers_does_nothing()
+    {
+        using var temp = new TempDatabase();
+        var repo = new DeviceRepository(temp.Database);
+        var changes = new FakeChanges();
+        var sync = new ControllableSync();
+        using var coordinator = new AutoSyncCoordinator(new FakeDiscovery(), repo, sync, changes);
+        coordinator.Start();
+
+        changes.Raise();
+
+        Assert.Equal(0, sync.Calls);
     }
 
     [Fact]

@@ -1,10 +1,12 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Porta.App;
 using Porta.Core.App;
 using Porta.Core.Discovery;
 using Porta.Core.Sync;
 using Porta.Infrastructure.Discovery;
+using Porta.Infrastructure.Sync;
 
 namespace Porta.App.Desktop;
 
@@ -29,11 +31,14 @@ sealed class Program
         var syncController = new QuicSyncController(environment);
         App.InjectedSync = syncController;
 
-        // Авто-синхро: при появлении доверенного устройства в сети синкаем автоматически.
+        // Авто-синхро: при появлении доверенного устройства И при локальных изменениях файлов.
         AutoSyncCoordinator? autoSync = null;
+        FileSystemChangeNotifier? changes = null;
         if (App.InjectedDiscovery is not null)
         {
-            autoSync = new AutoSyncCoordinator(App.InjectedDiscovery, environment.Devices, syncController);
+            changes = new FileSystemChangeNotifier(environment.Storages.List().Select(s => s.LocalPath));
+            changes.Start();
+            autoSync = new AutoSyncCoordinator(App.InjectedDiscovery, environment.Devices, syncController, changes);
             autoSync.Start();
         }
 
@@ -44,6 +49,7 @@ sealed class Program
         finally
         {
             autoSync?.Dispose();
+            changes?.Dispose();
             syncListener.DisposeAsync().AsTask().GetAwaiter().GetResult();
             (App.InjectedDiscovery as IDisposable)?.Dispose();
         }
