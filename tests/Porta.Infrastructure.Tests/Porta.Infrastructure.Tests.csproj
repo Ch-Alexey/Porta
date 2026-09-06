@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Porta.Infrastructure\Porta.Infrastructure.csproj" />
+    <!-- Сквозной тест разовой передачи доводит цепочку до view-модели: ядро → QUIC → UI. -->
+    <ProjectReference Include="..\..\src\Porta.App\Porta.App.csproj" />
   </ItemGroup>
 
 </Project>

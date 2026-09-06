@@ -132,6 +132,83 @@
                     </ScrollViewer>
                 </DockPanel>
             </TabItem>
+            <!-- Передача -->
+            <TabItem Header="Передача">
+                <DockPanel Margin="0,12,0,0">
+                    <Border DockPanel.Dock="Top" Padding="12" Margin="0,0,0,12"
+                            BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Разовая отправка файлов" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Выбрать файлы…" Command="{Binding Transfers.PickFilesCommand}" />
+                                <Button Content="Очистить" Command="{Binding Transfers.ClearSelectionCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Transfers.SelectionSummary}" Opacity="0.7" FontSize="12" />
+                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Кому отправить"
+                                      ItemsSource="{Binding Transfers.Peers}"
+                                      SelectedItem="{Binding Transfers.SelectedPeer}" />
+                            <Button Content="Отправить" HorizontalAlignment="Right"
+                                    Command="{Binding Transfers.SendCommand}"
+                                    IsEnabled="{Binding !Transfers.IsSending}" />
+                            <TextBlock Text="{Binding Transfers.StatusMessage}" Opacity="0.8" TextWrapping="Wrap"
+                                       IsVisible="{Binding Transfers.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border DockPanel.Dock="Bottom" Padding="12" Margin="0,12,0,0"
+                            BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Куда складывать принятое" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Transfers.DownloadsFolder}" />
+                            <Button Content="Сохранить" HorizontalAlignment="Right"
+                                    Command="{Binding Transfers.SaveDownloadsFolderCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer>
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Входящие передачи" FontWeight="SemiBold" Opacity="0.8" />
+                            <TextBlock Text="Пока нет входящих передач" Opacity="0.5" FontSize="12"
+                                       IsVisible="{Binding !Transfers.IncomingOffers.Count}" />
+                            <ItemsControl ItemsSource="{Binding Transfers.IncomingOffers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:IncomingOfferItem">
+                                        <Border Padding="10" Margin="0,0,0,8" CornerRadius="6"
+                                                BorderThickness="1" BorderBrush="Gray">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Text="{Binding SenderName, StringFormat='Принять файлы от «{0}»?'}"
+                                                           FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Summary}" Opacity="0.7" FontSize="12" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                                    <Button Content="Отклонить" Command="{Binding RejectCommand}" />
+                                                    <Button Content="Принять" Command="{Binding AcceptCommand}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="К отправке" FontWeight="SemiBold" Opacity="0.8" />
+                            <ItemsControl ItemsSource="{Binding Transfers.SelectedFiles}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:OutgoingFileItem">
+                                        <StackPanel Spacing="2" Margin="0,4">
+                                            <TextBlock Text="{Binding FileName}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.6">
+                                                <TextBlock Text="{Binding SizeText}" FontSize="11" />
+                                                <TextBlock Text="{Binding FullPath}" FontSize="11"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
             <!-- Медиа -->
             <TabItem Header="Медиа">
                 <DockPanel Margin="0,12,0,0">

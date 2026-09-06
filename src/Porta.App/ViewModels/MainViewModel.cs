@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Porta.App.Services;
 using Porta.Core.App;
+using Porta.Core.Data;
 using Porta.Core.Discovery;
+using Porta.Core.Drop;
 using Porta.Core.Media;
 using Porta.Core.Sync;
 
@@ -15,13 +17,20 @@ public partial class MainViewModel : ViewModelBase
         IDeviceDiscovery? discovery = null,
         IUiDispatcher? dispatcher = null,
         ISyncController? sync = null,
-        MediaScanner? mediaScanner = null)
+        MediaScanner? mediaScanner = null,
+        ISettingsRepository? settings = null,
+        IDropController? drops = null,
+        IFilePicker? filePicker = null,
+        UiDropAcceptance? dropAcceptance = null)
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
         Storages = new StoragesViewModel(data.Storages, data.Devices);
         Devices = new DevicesViewModel(data, discovery, dispatcher, sync);
         Media = new MediaViewModel(mediaScanner, dispatcher);
+        Transfers = new TransfersViewModel(
+            settings ?? new InMemorySettingsRepository(),
+            drops, filePicker, discovery, dropAcceptance, dispatcher);
     }
 
     [ObservableProperty]
@@ -35,4 +44,6 @@ public partial class MainViewModel : ViewModelBase
     public DevicesViewModel Devices { get; }
 
     public MediaViewModel Media { get; }
+
+    public TransfersViewModel Transfers { get; }
 }

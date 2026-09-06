@@ -40,3 +40,40 @@ internal sealed class FakeSyncController : ISyncController
         return Task.FromResult("ok");
     }
 }
+
+/// <summary>Настройки в памяти — для тестов view-моделей без БД.</summary>
+internal sealed class InMemorySettings : Porta.Core.Data.ISettingsRepository
+{
+    private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+
+    public string Get(string key, string fallback) => _values.GetValueOrDefault(key, fallback);
+
+    public void Set(string key, string value) => _values[key] = value;
+}
+
+/// <summary>Отправка, записывающая вызовы и возвращающая заданный результат.</summary>
+internal sealed class FakeDropController(Porta.Core.Drop.DropSendResult? result = null)
+    : Porta.Core.Drop.IDropController
+{
+    public List<(DiscoveredPeer Peer, IReadOnlyList<Porta.Core.Drop.DropSourceFile> Files)> Calls { get; } = [];
+
+    public Exception? Throws { get; set; }
+
+    public Task<Porta.Core.Drop.DropSendResult> SendAsync(
+        DiscoveredPeer peer,
+        IReadOnlyList<Porta.Core.Drop.DropSourceFile> files,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add((peer, files));
+        if (Throws is not null)
+            return Task.FromException<Porta.Core.Drop.DropSendResult>(Throws);
+        return Task.FromResult(result ?? new Porta.Core.Drop.DropSendResult(true, files.Count, 1024));
+    }
+}
+
+/// <summary>Выбор файлов, отдающий заранее заданный список.</summary>
+internal sealed class FakeFilePicker(params string[] paths) : Porta.App.Services.IFilePicker
+{
+    public Task<IReadOnlyList<string>> PickFilesAsync(string title)
+        => Task.FromResult<IReadOnlyList<string>>(paths);
+}

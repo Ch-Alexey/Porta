@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Porta.Core.App;
 using Porta.Core.Data;
+using Porta.Core.Drop;
 using Porta.Core.Sync;
 using Porta.Core.Transport;
 using Porta.Infrastructure.Transport;
@@ -11,10 +12,12 @@ using Porta.Infrastructure.Transport;
 namespace Porta.App.Desktop;
 
 /// <summary>
-/// Фоновый приём входящих синхронизаций: слушает QUIC на заданном порту и отдаёт
-/// запрошенные хранилища доверенным устройствам. См. docs/features/21-sync-from-ui.md.
+/// Фоновый приём входящих соединений: слушает QUIC на заданном порту, отдаёт запрошенные
+/// хранилища доверенным устройствам и принимает разовые передачи (если голова передала
+/// <paramref name="drops"/>). См. docs/features/21-sync-from-ui.md и 28-drop-ui.md.
 /// </summary>
-public sealed class BackgroundSyncListener(AppEnvironment environment, int port) : IAsyncDisposable
+public sealed class BackgroundSyncListener(AppEnvironment environment, int port, IDropAcceptance? drops = null)
+    : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cts = new();
     private QuicTransport? _transport;
@@ -43,7 +46,7 @@ public sealed class BackgroundSyncListener(AppEnvironment environment, int port)
             {
                 try
                 {
-                    await service.ServeOnceAsync(listener, ResolveFolder, cancellationToken: cancellationToken)
+                    await service.ServeOnceAsync(listener, ResolveFolder, drops: drops, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested)

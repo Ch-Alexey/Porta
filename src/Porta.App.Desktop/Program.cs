@@ -2,9 +2,12 @@ using System;
 using System.Linq;
 using Avalonia;
 using Porta.App;
+using Porta.App.Services;
 using Porta.Core.App;
+using Porta.Core.Data;
 using Porta.Core.Discovery;
 using Porta.Core.Sync;
+using Porta.App.ViewModels;
 using Porta.Infrastructure.Discovery;
 using Porta.Infrastructure.Sync;
 
@@ -26,7 +29,15 @@ sealed class Program
         App.InjectedData = environment;
         App.InjectedDiscovery = TryStartDiscovery(environment);
 
-        var syncListener = new BackgroundSyncListener(environment, SyncPort);
+        // Разовые передачи: приём спрашивает человека через UI, отправка идёт по QUIC.
+        var settings = new SettingsRepository(environment.Database);
+        var acceptance = new UiDropAcceptance(
+            () => settings.Get(SettingKeys.DownloadsFolder, TransfersViewModel.DefaultDownloadsFolder()));
+        App.InjectedSettings = settings;
+        App.InjectedDropAcceptance = acceptance;
+        App.InjectedDrops = new QuicDropController(environment);
+
+        var syncListener = new BackgroundSyncListener(environment, SyncPort, acceptance);
         syncListener.Start();
         var syncController = new QuicSyncController(environment);
         App.InjectedSync = syncController;
