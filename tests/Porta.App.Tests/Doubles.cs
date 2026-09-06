@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Porta.App.Services;
@@ -34,7 +35,7 @@ internal sealed class FakeSyncController : ISyncController
 {
     public List<DiscoveredPeer> Calls { get; } = [];
 
-    public Task<string> SyncWithPeerAsync(DiscoveredPeer peer, CancellationToken cancellationToken = default)
+    public Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, CancellationToken cancellationToken = default)
     {
         Calls.Add(peer);
         return Task.FromResult("ok");
@@ -76,4 +77,24 @@ internal sealed class FakeFilePicker(params string[] paths) : Porta.App.Services
 {
     public Task<IReadOnlyList<string>> PickFilesAsync(string title)
         => Task.FromResult<IReadOnlyList<string>>(paths);
+}
+
+/// <summary>Выбор папки, отдающий заранее заданный путь (null — пользователь отменил).</summary>
+internal sealed class FakeFolderPicker(string? folder) : Porta.App.Services.IFolderPicker
+{
+    public int Calls { get; private set; }
+
+    public Task<string?> PickFolderAsync(string title)
+    {
+        Calls++;
+        return Task.FromResult(folder);
+    }
+}
+
+/// <summary>Записывает, за какими папками велели следить.</summary>
+internal sealed class RecordingWatchedFolders : Porta.Core.Sync.IWatchedFolders
+{
+    public List<IReadOnlyList<string>> Calls { get; } = [];
+
+    public void Reconfigure(IEnumerable<string> folders) => Calls.Add(folders.ToList());
 }

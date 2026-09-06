@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Porta.App.Services;
@@ -65,6 +66,18 @@ public partial class DevicesViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
 
+    /// <summary>
+    /// Отозвать доверие: ключ и связи с хранилищами уходят, файлы на диске остаются.
+    /// См. docs/features/29-managing-what-exists.md.
+    /// </summary>
+    private void Revoke(DeviceItem item)
+    {
+        // DeviceId.Parse выбрасывает дефисы, поэтому читаемая форма разбирается как есть.
+        _data.Devices.Remove(DeviceId.Parse(item.DeviceId));
+        StatusMessage = $"Доверие к «{item.Name}» отозвано. Полученные файлы остались.";
+        Reload();
+    }
+
     [RelayCommand]
     private void GenerateInvitation() => InvitationToken = _data.CreateInvitation();
 
@@ -100,7 +113,7 @@ public partial class DevicesViewModel : ViewModelBase
         {
             foreach (DiscoveredPeer peer in _peers.Values.ToList())
             {
-                await _sync.SyncWithPeerAsync(peer);
+                await _sync.SyncWithPeerAsync(peer, SyncTrigger.Manual);
                 devices++;
             }
             StatusMessage = $"Синхронизировано с {devices} устр.";
@@ -134,12 +147,31 @@ public partial class DevicesViewModel : ViewModelBase
     {
         Items.Clear();
         foreach (TrustedDevice device in _data.Devices.List())
-            Items.Add(new DeviceItem(device.Name, device.Id.ToDisplayString()));
+            Items.Add(new DeviceItem(device.Name, device.Id.ToDisplayString(), Revoke));
     }
 }
 
 /// <summary>Строка списка доверенных устройств для отображения.</summary>
-public sealed record DeviceItem(string Name, string DeviceId);
+/// <summary>
+/// Доверенное устройство в списке. Команда живёт на самой строке — шаблону не нужно
+/// искать view-модель через предка (см. docs/reflections/28-drop-ui.md).
+/// </summary>
+public sealed class DeviceItem
+{
+    internal DeviceItem(string name, string deviceId, Action<DeviceItem> revoke)
+    {
+        Name = name;
+        DeviceId = deviceId;
+        RevokeCommand = new RelayCommand(() => revoke(this));
+    }
+
+    public string Name { get; }
+
+    /// <summary>Device ID в читаемой форме (группами через дефис).</summary>
+    public string DeviceId { get; }
+
+    public ICommand RevokeCommand { get; }
+}
 
 /// <summary>Строка списка найденных в сети устройств.</summary>
 public sealed record DiscoveredPeerItem(string Name, string DeviceId);

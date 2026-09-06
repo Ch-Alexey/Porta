@@ -21,16 +21,18 @@ public partial class MainViewModel : ViewModelBase
         ISettingsRepository? settings = null,
         IDropController? drops = null,
         IFilePicker? filePicker = null,
-        UiDropAcceptance? dropAcceptance = null)
+        UiDropAcceptance? dropAcceptance = null,
+        IFolderPicker? folderPicker = null,
+        IWatchedFolders? watchedFolders = null)
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
-        Storages = new StoragesViewModel(data.Storages, data.Devices);
+        Storages = new StoragesViewModel(data.Storages, data.Devices, folderPicker, watchedFolders);
         Devices = new DevicesViewModel(data, discovery, dispatcher, sync);
         Media = new MediaViewModel(mediaScanner, dispatcher);
         Transfers = new TransfersViewModel(
             settings ?? new InMemorySettingsRepository(),
-            drops, filePicker, discovery, dropAcceptance, dispatcher);
+            drops, filePicker, discovery, dropAcceptance, dispatcher, folderPicker);
     }
 
     [ObservableProperty]

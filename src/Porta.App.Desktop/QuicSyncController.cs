@@ -18,7 +18,10 @@ namespace Porta.App.Desktop;
 /// </summary>
 public sealed class QuicSyncController(AppEnvironment environment) : ISyncController
 {
-    public async Task<string> SyncWithPeerAsync(DiscoveredPeer peer, CancellationToken cancellationToken = default)
+    public async Task<string> SyncWithPeerAsync(
+        DiscoveredPeer peer,
+        SyncTrigger trigger = SyncTrigger.Manual,
+        CancellationToken cancellationToken = default)
     {
         if (!QuicTransport.IsSupported)
             return "QUIC недоступен (нет libmsquic)";
@@ -33,7 +36,7 @@ public sealed class QuicSyncController(AppEnvironment environment) : ISyncContro
             new DeviceRepositoryTrustPolicy(environment.Devices), environment.FileIndex);
 
         int totalFiles = 0;
-        foreach (Storage storage in StorageSharing.SharedWith(environment.Storages, peer.DeviceId))
+        foreach (Storage storage in StorageSelection.ForSync(environment.Storages, peer.DeviceId, trigger))
         {
             SyncApplyReport report = await service
                 .PullAsync(endpoint, peer.DeviceId, storage.Id, storage.LocalPath, cancellationToken: cancellationToken)

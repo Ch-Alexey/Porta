@@ -39,6 +39,35 @@ public class StorageRepositoryTests
     }
 
     [Fact]
+    public void Update_changes_modes_without_adding_a_row()
+    {
+        using var temp = new TempDatabase();
+        var repo = new StorageRepository(temp.Database);
+        Storage storage = SampleStorage();
+        repo.Add(storage);
+
+        repo.Update(storage with { SyncMode = SyncMode.Automatic, Paused = false, Name = "Документы" });
+
+        Storage? loaded = repo.Get(storage.Id);
+        Assert.NotNull(loaded);
+        Assert.Equal(SyncMode.Automatic, loaded!.SyncMode);
+        Assert.False(loaded.Paused);
+        Assert.Equal("Документы", loaded.Name);
+        Assert.Single(repo.List());
+    }
+
+    [Fact]
+    public void Update_of_an_unknown_storage_changes_nothing()
+    {
+        using var temp = new TempDatabase();
+        var repo = new StorageRepository(temp.Database);
+
+        repo.Update(SampleStorage("нет-такого"));
+
+        Assert.Empty(repo.List());
+    }
+
+    [Fact]
     public void LinkDevice_is_upsert_and_listed()
     {
         using var temp = new TempDatabase();

@@ -32,7 +32,11 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Добавить хранилище" FontWeight="SemiBold" />
                             <TextBox PlaceholderText="Имя" Text="{Binding Storages.NewName}" />
-                            <TextBox PlaceholderText="Путь к папке" Text="{Binding Storages.NewPath}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Обзор…" Margin="8,0,0,0"
+                                        Command="{Binding Storages.BrowseCommand}" />
+                                <TextBox PlaceholderText="Путь к папке" Text="{Binding Storages.NewPath}" />
+                            </DockPanel>
                             <Button Content="Добавить" HorizontalAlignment="Right"
                                     Command="{Binding Storages.AddCommand}" />
 
@@ -49,19 +53,36 @@
                                 <Button Content="Убрать доступ" Command="{Binding Storages.UnshareCommand}" />
                                 <Button Content="Поделиться" Command="{Binding Storages.ShareCommand}" />
                             </StackPanel>
+                            <TextBlock Text="{Binding Storages.StatusMessage}" Opacity="0.8" TextWrapping="Wrap"
+                                       IsVisible="{Binding Storages.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
                     </Border>
 
                     <ListBox ItemsSource="{Binding Storages.Items}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:StorageItem">
-                                <StackPanel Spacing="2" Margin="0,4">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding LocalPath}" Opacity="0.7" FontSize="12" />
-                                    <TextBlock Text="{Binding SharedWith, StringFormat='Общий доступ: {0}'}"
-                                               Opacity="0.6" FontSize="11"
-                                               IsVisible="{Binding SharedWith, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                </StackPanel>
+                                <DockPanel Margin="0,4">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                                VerticalAlignment="Center">
+                                        <Button Content="{Binding SyncModeText}" FontSize="11"
+                                                Command="{Binding ToggleSyncModeCommand}"
+                                                ToolTip.Tip="Переключить авто/ручную синхронизацию" />
+                                        <Button Content="Пауза" FontSize="11"
+                                                Command="{Binding TogglePausedCommand}" />
+                                        <Button Content="Убрать" FontSize="11"
+                                                Command="{Binding RemoveCommand}"
+                                                ToolTip.Tip="Убрать из синхронизации. Файлы на диске останутся" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding LocalPath}" Opacity="0.7" FontSize="12" />
+                                        <TextBlock Text="{Binding PausedText}" Opacity="0.6" FontSize="11"
+                                                   IsVisible="{Binding PausedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        <TextBlock Text="{Binding SharedWith, StringFormat='Общий доступ: {0}'}"
+                                                   Opacity="0.6" FontSize="11"
+                                                   IsVisible="{Binding SharedWith, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                </DockPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -101,11 +122,17 @@
                             <ItemsControl ItemsSource="{Binding Devices.Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:DeviceItem">
-                                        <StackPanel Spacing="2" Margin="0,4">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
-                                                       FontFamily="monospace" FontSize="12" />
-                                        </StackPanel>
+                                        <DockPanel Margin="0,4">
+                                            <Button DockPanel.Dock="Right" Content="Отозвать" FontSize="11"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding RevokeCommand}"
+                                                    ToolTip.Tip="Убрать доверие. Полученные файлы останутся" />
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding DeviceId}" Opacity="0.7"
+                                                           FontFamily="monospace" FontSize="12" />
+                                            </StackPanel>
+                                        </DockPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -159,7 +186,11 @@
                             BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Куда складывать принятое" FontWeight="SemiBold" />
-                            <TextBox Text="{Binding Transfers.DownloadsFolder}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Обзор…" Margin="8,0,0,0"
+                                        Command="{Binding Transfers.BrowseDownloadsCommand}" />
+                                <TextBox Text="{Binding Transfers.DownloadsFolder}" />
+                            </DockPanel>
                             <Button Content="Сохранить" HorizontalAlignment="Right"
                                     Command="{Binding Transfers.SaveDownloadsFolderCommand}" />
                         </StackPanel>

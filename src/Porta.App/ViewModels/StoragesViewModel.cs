@@ -3,26 +3,39 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
+using Porta.App.Services;
 using Porta.Core.Data;
 using Porta.Core.Identity;
 using Porta.Core.Model;
+using Porta.Core.Sync;
 
 namespace Porta.App.ViewModels;
 
 /// <summary>
-/// Вкладка «Хранилища»: список папок, добавление и выборочный доступ (поделиться папкой
-/// с доверенным устройством). См. docs/features/24-storage-sharing.md.
+/// Вкладка «Хранилища»: список папок, добавление и удаление, режим синхронизации и
+/// выборочный доступ (поделиться папкой с доверенным устройством).
+/// См. docs/features/24-storage-sharing.md и 29-managing-what-exists.md.
 /// </summary>
 public partial class StoragesViewModel : ViewModelBase
 {
     private readonly IStorageRepository _storages;
     private readonly IDeviceRepository _devices;
+    private readonly IFolderPicker? _folders;
+    private readonly IWatchedFolders? _watched;
 
-    public StoragesViewModel(IStorageRepository storages, IDeviceRepository devices)
+    public StoragesViewModel(
+        IStorageRepository storages,
+        IDeviceRepository devices,
+        IFolderPicker? folders = null,
+        IWatchedFolders? watched = null)
     {
         _storages = storages;
         _devices = devices;
+        _folders = folders;
+        _watched = watched;
         Reload();
     }
 
@@ -43,6 +56,9 @@ public partial class StoragesViewModel : ViewModelBase
     [ObservableProperty]
     public partial DeviceChoice? SelectedDevice { get; set; }
 
+    [ObservableProperty]
+    public partial string? StatusMessage { get; set; }
+
     [RelayCommand]
     private void Add()
     {
@@ -61,6 +77,55 @@ public partial class StoragesViewModel : ViewModelBase
         _storages.Add(storage);
         NewName = string.Empty;
         NewPath = string.Empty;
+        Reload();
+    }
+
+    [RelayCommand]
+    private async Task BrowseAsync()
+    {
+        if (_folders is null)
+            return;
+
+        string? picked = await _folders.PickFolderAsync("Выберите папку хранилища");
+        if (string.IsNullOrEmpty(picked))
+            return;
+
+        NewPath = picked;
+        if (string.IsNullOrWhiteSpace(NewName))
+            NewName = System.IO.Path.GetFileName(picked.TrimEnd(System.IO.Path.DirectorySeparatorChar));
+    }
+
+    /// <summary>
+    /// Убрать папку из синхронизации. Файлы на диске остаются — Porta не удаляет
+    /// пользовательские данные (см. docs/features/00-functionality.md §6).
+    /// </summary>
+    private void Remove(StorageItem item)
+    {
+        _storages.Remove(item.Id);
+        if (SelectedStorage?.Id == item.Id)
+            SelectedStorage = null;
+        StatusMessage = $"Хранилище «{item.Name}» убрано из синхронизации. Файлы на диске остались.";
+        Reload();
+    }
+
+    /// <summary>Переключить хранилище между авто- и ручной синхронизацией.</summary>
+    private void ToggleSyncMode(StorageItem item)
+    {
+        if (_storages.Get(item.Id) is not { } storage)
+            return;
+
+        SyncMode next = storage.SyncMode == SyncMode.Automatic ? SyncMode.Manual : SyncMode.Automatic;
+        _storages.Update(storage with { SyncMode = next });
+        Reload();
+    }
+
+    /// <summary>Поставить хранилище на паузу или снять с паузы.</summary>
+    private void TogglePaused(StorageItem item)
+    {
+        if (_storages.Get(item.Id) is not { } storage)
+            return;
+
+        _storages.Update(storage with { Paused = !storage.Paused });
         Reload();
     }
 
@@ -91,18 +156,71 @@ public partial class StoragesViewModel : ViewModelBase
         {
             IEnumerable<string> shared = _storages.ListDevices(storage.Id)
                 .Select(link => deviceNames.GetValueOrDefault(link.DeviceId.ToString(), link.DeviceId.ToString()));
-            Items.Add(new StorageItem(storage.Id, storage.Name, storage.LocalPath, string.Join(", ", shared)));
+            Items.Add(new StorageItem(
+                storage.Id,
+                storage.Name,
+                storage.LocalPath,
+                string.Join(", ", shared),
+                storage.SyncMode == SyncMode.Automatic ? "Авто" : "Вручную",
+                storage.Paused ? "На паузе" : string.Empty,
+                Remove,
+                ToggleSyncMode,
+                TogglePaused));
         }
 
         TrustedDevices.Clear();
         foreach (TrustedDevice device in _devices.List())
             TrustedDevices.Add(new DeviceChoice(device.Name, device.Id.ToString()));
+
+        // Список папок изменился — наблюдатель за файлами должен следить за новым набором,
+        // иначе новое хранилище подхватится только после перезапуска.
+        _watched?.Reconfigure(Items.Select(i => i.LocalPath).ToList());
     }
 }
 
-/// <summary>Строка списка хранилищ.</summary>
-public sealed record StorageItem(string Id, string Name, string LocalPath, string SharedWith)
+/// <summary>
+/// Строка списка хранилищ. Команды живут на самой строке — шаблону не нужно искать
+/// view-модель через предка (см. решение из docs/reflections/28-drop-ui.md).
+/// </summary>
+public sealed class StorageItem
 {
+    internal StorageItem(
+        string id,
+        string name,
+        string localPath,
+        string sharedWith,
+        string syncModeText,
+        string pausedText,
+        Action<StorageItem> remove,
+        Action<StorageItem> toggleSyncMode,
+        Action<StorageItem> togglePaused)
+    {
+        Id = id;
+        Name = name;
+        LocalPath = localPath;
+        SharedWith = sharedWith;
+        SyncModeText = syncModeText;
+        PausedText = pausedText;
+        RemoveCommand = new RelayCommand(() => remove(this));
+        ToggleSyncModeCommand = new RelayCommand(() => toggleSyncMode(this));
+        TogglePausedCommand = new RelayCommand(() => togglePaused(this));
+    }
+
+    public string Id { get; }
+    public string Name { get; }
+    public string LocalPath { get; }
+    public string SharedWith { get; }
+
+    /// <summary>«Авто» или «Вручную».</summary>
+    public string SyncModeText { get; }
+
+    /// <summary>«На паузе» или пусто.</summary>
+    public string PausedText { get; }
+
+    public ICommand RemoveCommand { get; }
+    public ICommand ToggleSyncModeCommand { get; }
+    public ICommand TogglePausedCommand { get; }
+
     public override string ToString() => Name;
 }
 

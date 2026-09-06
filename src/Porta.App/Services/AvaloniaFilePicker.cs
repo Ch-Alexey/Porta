@@ -8,8 +8,11 @@ using Avalonia.Platform.Storage;
 
 namespace Porta.App.Services;
 
-/// <summary>Системный диалог выбора файлов. См. docs/features/28-drop-ui.md.</summary>
-public sealed class AvaloniaFilePicker : IFilePicker
+/// <summary>
+/// Системные диалоги выбора файлов и папки.
+/// См. docs/features/28-drop-ui.md и 29-managing-what-exists.md.
+/// </summary>
+public sealed class AvaloniaFilePicker : IFilePicker, IFolderPicker
 {
     public async Task<IReadOnlyList<string>> PickFilesAsync(string title)
     {
@@ -25,6 +28,18 @@ public sealed class AvaloniaFilePicker : IFilePicker
             .Where(path => !string.IsNullOrEmpty(path))
             .Select(path => path!)
             .ToList();
+    }
+
+    public async Task<string?> PickFolderAsync(string title)
+    {
+        TopLevel? top = ResolveTopLevel();
+        if (top is null)
+            return null;
+
+        IReadOnlyList<IStorageFolder> folders = await top.StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+
+        return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }
 
     /// <summary>Окно, к которому крепится диалог; null — окна ещё/уже нет.</summary>

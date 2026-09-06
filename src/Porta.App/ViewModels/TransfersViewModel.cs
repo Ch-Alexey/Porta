@@ -23,6 +23,7 @@ public partial class TransfersViewModel : ViewModelBase
     private readonly ISettingsRepository _settings;
     private readonly IDropController? _drops;
     private readonly IFilePicker? _picker;
+    private readonly IFolderPicker? _folders;
     private readonly IUiDispatcher _dispatcher;
     private readonly Dictionary<string, DiscoveredPeer> _peers = new(StringComparer.Ordinal);
     private readonly Dictionary<PendingDropOffer, IncomingOfferItem> _incoming = [];
@@ -33,11 +34,13 @@ public partial class TransfersViewModel : ViewModelBase
         IFilePicker? picker = null,
         IDeviceDiscovery? discovery = null,
         UiDropAcceptance? acceptance = null,
-        IUiDispatcher? dispatcher = null)
+        IUiDispatcher? dispatcher = null,
+        IFolderPicker? folders = null)
     {
         _settings = settings;
         _drops = drops;
         _picker = picker;
+        _folders = folders;
         _dispatcher = dispatcher ?? new AvaloniaUiDispatcher();
         DownloadsFolder = settings.Get(SettingKeys.DownloadsFolder, DefaultDownloadsFolder());
 
@@ -150,6 +153,17 @@ public partial class TransfersViewModel : ViewModelBase
         {
             IsSending = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task BrowseDownloadsAsync()
+    {
+        if (_folders is null)
+            return;
+
+        string? picked = await _folders.PickFolderAsync("Куда складывать принятые файлы");
+        if (!string.IsNullOrEmpty(picked))
+            DownloadsFolder = picked;
     }
 
     [RelayCommand]

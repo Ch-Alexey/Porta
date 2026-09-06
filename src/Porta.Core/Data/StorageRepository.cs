@@ -29,6 +29,25 @@ public sealed class StorageRepository : IStorageRepository
         cmd.ExecuteNonQuery();
     }
 
+    public void Update(Storage storage)
+    {
+        using var connection = _db.OpenConnection();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            UPDATE storages
+            SET name = $name, local_path = $path, exchange_mode = $exchange,
+                sync_mode = $sync, paused = $paused
+            WHERE storage_id = $id;
+            """;
+        cmd.Parameters.AddWithValue("$id", storage.Id);
+        cmd.Parameters.AddWithValue("$name", storage.Name);
+        cmd.Parameters.AddWithValue("$path", storage.LocalPath);
+        cmd.Parameters.AddWithValue("$exchange", (int)storage.ExchangeMode);
+        cmd.Parameters.AddWithValue("$sync", (int)storage.SyncMode);
+        cmd.Parameters.AddWithValue("$paused", storage.Paused ? 1 : 0);
+        cmd.ExecuteNonQuery();
+    }
+
     public Storage? Get(string storageId)
     {
         using var connection = _db.OpenConnection();

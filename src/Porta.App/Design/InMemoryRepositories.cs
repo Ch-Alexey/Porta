@@ -37,6 +37,12 @@ public sealed class InMemoryStorageRepository : IStorageRepository
 
     public void Add(Storage storage) => _storages[storage.Id] = storage;
 
+    public void Update(Storage storage)
+    {
+        if (_storages.ContainsKey(storage.Id))
+            _storages[storage.Id] = storage;
+    }
+
     public Storage? Get(string storageId) => _storages.GetValueOrDefault(storageId);
 
     public IReadOnlyList<Storage> List() => _storages.Values.OrderBy(s => s.CreatedAt).ToList();

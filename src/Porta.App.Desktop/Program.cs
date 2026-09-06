@@ -49,6 +49,8 @@ sealed class Program
         {
             changes = new FileSystemChangeNotifier(environment.Storages.List().Select(s => s.LocalPath));
             changes.Start();
+            // Чтобы новое хранилище подхватывалось сразу, а не после перезапуска.
+            App.InjectedWatchedFolders = changes;
             autoSync = new AutoSyncCoordinator(App.InjectedDiscovery, environment.Devices, syncController, changes);
             autoSync.Start();
         }

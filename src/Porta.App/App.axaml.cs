@@ -35,6 +35,12 @@ public partial class App : Application
     /// <summary>Выбор файлов (системный диалог); голова может подменить.</summary>
     public static IFilePicker? InjectedFilePicker { get; set; }
 
+    /// <summary>Выбор папки (системный диалог); голова может подменить.</summary>
+    public static IFolderPicker? InjectedFolderPicker { get; set; }
+
+    /// <summary>Наблюдатель за папками хранилищ — чтобы UI мог его переконфигурировать.</summary>
+    public static IWatchedFolders? InjectedWatchedFolders { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -55,7 +61,9 @@ public partial class App : Application
             InjectedSettings,
             InjectedDrops,
             InjectedFilePicker ?? new AvaloniaFilePicker(),
-            InjectedDropAcceptance);
+            InjectedDropAcceptance,
+            InjectedFolderPicker ?? new AvaloniaFilePicker(),
+            InjectedWatchedFolders);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

@@ -7,6 +7,12 @@ namespace Porta.Core.Data;
 public interface IStorageRepository
 {
     void Add(Storage storage);
+
+    /// <summary>
+    /// Сохранить изменения хранилища (режимы, имя, путь).
+    /// См. docs/features/29-managing-what-exists.md.
+    /// </summary>
+    void Update(Storage storage);
     Storage? Get(string storageId);
     IReadOnlyList<Storage> List();
     bool Remove(string storageId);

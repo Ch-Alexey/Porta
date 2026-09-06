@@ -38,7 +38,12 @@ public static class DropProtocol
         DropDecisionMessage decision = await channel.ReadAsync<DropDecisionMessage>(cancellationToken).ConfigureAwait(false);
 
         if (!decision.Accepted)
+        {
+            // Подтверждаем отказ: пока приёмник ждёт этого сообщения, он не закроет
+            // соединение — иначе оно рвётся прямо под нашим чтением отказа выше.
+            await SayGoodbyeAsync(channel, cancellationToken).ConfigureAwait(false);
             return new DropSendResult(false, 0, 0, decision.Reason ?? "Получатель отклонил передачу");
+        }
 
         long bytes = 0;
         foreach (DropSourceFile file in files)
@@ -79,6 +84,10 @@ public static class DropProtocol
             await channel.WriteAsync(
                 new DropDecisionMessage(false, decision.Reason ?? "Получатель отклонил передачу"),
                 cancellationToken).ConfigureAwait(false);
+
+            // Не закрываем соединение сразу: отправитель ещё читает отказ, а обрыв QUIC
+            // выбрасывает недочитанное и превращает вежливый отказ в исключение.
+            await WaitForGoodbyeAsync(channel, cancellationToken).ConfigureAwait(false);
             return DropReceiveResult.Rejected;
         }
 
@@ -106,6 +115,40 @@ public static class DropProtocol
         }
 
         return new DropReceiveResult(true, written.Count, bytes, written);
+    }
+
+    /// <summary>
+    /// Сколько ждать прощального сообщения. Короче общего таймаута канала: данных здесь
+    /// уже нет, и висеть минутами из-за упавшего пира незачем.
+    /// </summary>
+    private static readonly TimeSpan GoodbyeTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>Сказать «отказ понял» — best-effort, на результат передачи не влияет.</summary>
+    private static async Task SayGoodbyeAsync(MessageChannel channel, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await channel.WriteAsync(new DropCompleteMessage(0), cancellationToken).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Приёмник уже ушёл — отказ мы всё равно получили.
+        }
+    }
+
+    /// <summary>Дождаться подтверждения отказа — best-effort, с коротким пределом.</summary>
+    private static async Task WaitForGoodbyeAsync(MessageChannel channel, CancellationToken cancellationToken)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(GoodbyeTimeout);
+        try
+        {
+            _ = await channel.ReadAsync<DropCompleteMessage>(cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is IOException or OperationCanceledException or TimeoutException)
+        {
+            // Отправитель не попрощался — отказ уже отправлен, больше делать нечего.
+        }
     }
 
     private static async Task<long> SendFileAsync(

@@ -91,7 +91,7 @@ public sealed class AutoSyncCoordinator : IDisposable
     {
         try
         {
-            await _sync.SyncWithPeerAsync(peer).ConfigureAwait(false);
+            await _sync.SyncWithPeerAsync(peer, SyncTrigger.Automatic).ConfigureAwait(false);
         }
         catch
         {
