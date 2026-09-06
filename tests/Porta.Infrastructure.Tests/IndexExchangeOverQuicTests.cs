@@ -48,8 +48,8 @@ public class IndexExchangeOverQuicTests : IDisposable
         var clientConn = await client.ConnectAsync(listener.LocalEndPoint, serverId.Id, ct);
         var serverConn = await acceptTask;
 
-        var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, ct);
-        var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, ct);
+        var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, cancellationToken: ct);
+        var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, cancellationToken: ct);
         await Task.WhenAll(clientSessionTask, serverSessionTask);
         await using var cs = await clientSessionTask;
         await using var ss = await serverSessionTask;

@@ -16,7 +16,7 @@ public static class FileAssembler
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(blocks);
 
-        string fullPath = ResolveSafePath(rootPath, entry.RelativePath);
+        string fullPath = SafePath.Resolve(rootPath, entry.RelativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         string tempPath = fullPath + ".porta-tmp";
 
@@ -54,17 +54,5 @@ public static class FileAssembler
                 File.Delete(tempPath);
             throw;
         }
-    }
-
-    private static string ResolveSafePath(string root, string relativePath)
-    {
-        string rootFull = Path.GetFullPath(root);
-        string full = Path.GetFullPath(Path.Combine(rootFull, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-        string prefix = rootFull.EndsWith(Path.DirectorySeparatorChar) ? rootFull : rootFull + Path.DirectorySeparatorChar;
-
-        if (full != rootFull && !full.StartsWith(prefix, StringComparison.Ordinal))
-            throw new InvalidOperationException($"Небезопасный путь вне хранилища: {relativePath}");
-
-        return full;
     }
 }

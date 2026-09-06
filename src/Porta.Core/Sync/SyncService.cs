@@ -1,5 +1,6 @@
 using System.Net;
 using Porta.Core.Data;
+using Porta.Core.Drop;
 using Porta.Core.Identity;
 using Porta.Core.Indexing;
 using Porta.Core.Protocol;
@@ -46,29 +47,67 @@ public sealed class SyncService
     {
         await using IPeerConnection connection = await _transport.ConnectAsync(endpoint, peer, cancellationToken).ConfigureAwait(false);
         await using PeerSession session = await PeerSession.EstablishAsync(
-            connection, _trust, _selfName, isInitiator: true, cancellationToken).ConfigureAwait(false);
+            connection, _trust, _selfName, isInitiator: true,
+            SessionIntentKind.Sync, cancellationToken).ConfigureAwait(false);
 
         return await VersionedSync.PullAsync(
             session.Control, _index, folder, storageId, _self.Id, peer, versions, ignore, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
+    /// <summary>Инициатор: подключиться к устройству и разово передать файлы.</summary>
+    public async Task<DropSendResult> SendFilesAsync(
+        IPEndPoint endpoint,
+        DeviceId peer,
+        IReadOnlyList<DropSourceFile> files,
+        CancellationToken cancellationToken = default)
+    {
+        await using IPeerConnection connection = await _transport.ConnectAsync(endpoint, peer, cancellationToken).ConfigureAwait(false);
+        await using PeerSession session = await PeerSession.EstablishAsync(
+            connection, _trust, _selfName, isInitiator: true,
+            SessionIntentKind.Drop, cancellationToken).ConfigureAwait(false);
+
+        return await DropProtocol.SendAsync(session.Control, files, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     /// <summary>
-    /// Отдающая сторона: принять одно соединение и отдать запрошенное хранилище.
-    /// Папку определяет <paramref name="resolveFolder"/> (storageId → путь, null — нет доступа).
+    /// Отдающая сторона: принять одно соединение и обслужить его по объявленному
+    /// намерению — синк хранилища или приём разовой передачи.
+    /// Папку хранилища определяет <paramref name="resolveFolder"/> (storageId → путь,
+    /// null — нет доступа). Если <paramref name="drops"/> не задан, передачи отклоняются.
     /// </summary>
     public async Task ServeOnceAsync(
         ITransportListener listener,
         Func<string, string?> resolveFolder,
         IgnoreRules? ignore = null,
+        IDropAcceptance? drops = null,
         CancellationToken cancellationToken = default)
     {
         await using IPeerConnection connection = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
         await using PeerSession session = await PeerSession.EstablishAsync(
-            connection, _trust, _selfName, isInitiator: false, cancellationToken).ConfigureAwait(false);
+            connection, _trust, _selfName, isInitiator: false,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        if (session.Intent == SessionIntentKind.Drop)
+        {
+            await DropProtocol.ReceiveAsync(
+                session.Control, drops ?? RejectingAcceptance.Instance, session.RemoteDeviceId, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
 
         await VersionedSync.ServeAsync(
             session.Control, _index, resolveFolder, _self.Id, ignore, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>Приём не настроен — вежливо отказываем, а не рвём соединение.</summary>
+    private sealed class RejectingAcceptance : IDropAcceptance
+    {
+        public static RejectingAcceptance Instance { get; } = new();
+
+        public Task<DropDecision> DecideAsync(DropOfferMessage offer, DeviceId sender, CancellationToken cancellationToken = default)
+            => Task.FromResult(DropDecision.Reject("Приём разовых передач не настроен"));
     }
 }

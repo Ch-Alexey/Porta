@@ -26,11 +26,12 @@ public sealed class PeerSession : IAsyncDisposable
 {
     private readonly IPeerConnection _connection;
 
-    private PeerSession(IPeerConnection connection, MessageChannel control, string remoteName)
+    private PeerSession(IPeerConnection connection, MessageChannel control, string remoteName, SessionIntentKind intent)
     {
         _connection = connection;
         Control = control;
         RemoteDeviceName = remoteName;
+        Intent = intent;
     }
 
     /// <summary>Device ID второй стороны (подтверждён транспортом).</summary>
@@ -43,14 +44,22 @@ public sealed class PeerSession : IAsyncDisposable
     public MessageChannel Control { get; }
 
     /// <summary>
+    /// Чего инициатор хочет от сессии. У инициатора — то, что он объявил; у отвечающей
+    /// стороны — то, что попросили. См. docs/features/26-drop-transfer.md.
+    /// </summary>
+    public SessionIntentKind Intent { get; }
+
+    /// <summary>
     /// Установить сессию поверх аутентифицированного соединения: проверить доверие и
     /// обменяться рукопожатием. Инициатор открывает контрольный поток, ответчик принимает.
     /// </summary>
+    /// <param name="intent">Намерение инициатора; у отвечающей стороны игнорируется.</param>
     public static async Task<PeerSession> EstablishAsync(
         IPeerConnection connection,
         ITrustPolicy trust,
         string localDeviceName,
         bool isInitiator,
+        SessionIntentKind intent = SessionIntentKind.Sync,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -75,7 +84,21 @@ public sealed class PeerSession : IAsyncDisposable
         if (remoteHello.ProtocolVersion != ProtocolVersion.Current)
             throw new ProtocolVersionException(ProtocolVersion.Current, remoteHello.ProtocolVersion);
 
-        return new PeerSession(connection, control, remoteHello.DeviceName);
+        // Намерение объявляет инициатор — по нему отвечающая сторона выбирает диалог.
+        SessionIntentKind agreed;
+        if (isInitiator)
+        {
+            await control.WriteAsync(new SessionIntentMessage(intent), cancellationToken).ConfigureAwait(false);
+            agreed = intent;
+        }
+        else
+        {
+            SessionIntentMessage requested =
+                await control.ReadAsync<SessionIntentMessage>(cancellationToken).ConfigureAwait(false);
+            agreed = requested.Kind;
+        }
+
+        return new PeerSession(connection, control, remoteHello.DeviceName, agreed);
     }
 
     public ValueTask DisposeAsync() => _connection.DisposeAsync();

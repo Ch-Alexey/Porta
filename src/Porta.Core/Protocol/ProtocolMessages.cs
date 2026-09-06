@@ -5,7 +5,8 @@ namespace Porta.Core.Protocol;
 /// <summary>Версия прикладного протокола Porta.</summary>
 public static class ProtocolVersion
 {
-    public const int Current = 1;
+    /// <summary>2 — после рукопожатия инициатор объявляет намерение сессии (Sync/Drop).</summary>
+    public const int Current = 2;
 }
 
 /// <summary>

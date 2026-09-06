@@ -43,8 +43,8 @@ public class SessionOverQuicTests
         var clientTrust = new TrustList(serverId.Id);
         var serverTrust = new TrustList(clientId.Id);
 
-        Task<PeerSession> clientSession = PeerSession.EstablishAsync(clientConn, clientTrust, "Client", isInitiator: true, ct);
-        Task<PeerSession> serverSession = PeerSession.EstablishAsync(serverConn, serverTrust, "Server", isInitiator: false, ct);
+        Task<PeerSession> clientSession = PeerSession.EstablishAsync(clientConn, clientTrust, "Client", isInitiator: true, cancellationToken: ct);
+        Task<PeerSession> serverSession = PeerSession.EstablishAsync(serverConn, serverTrust, "Server", isInitiator: false, cancellationToken: ct);
         await Task.WhenAll(clientSession, serverSession);
 
         await using PeerSession cs = await clientSession;
@@ -73,10 +73,10 @@ public class SessionOverQuicTests
 
         // Сервер не доверяет никому; клиент доверяет серверу.
         var serverTrust = new TrustList();
-        Task<PeerSession> serverSession = PeerSession.EstablishAsync(serverConn, serverTrust, "Server", isInitiator: false, ct);
+        Task<PeerSession> serverSession = PeerSession.EstablishAsync(serverConn, serverTrust, "Server", isInitiator: false, cancellationToken: ct);
 
         // Клиентская сторона может упасть на закрытом соединении — наблюдаем и игнорируем.
-        Task<PeerSession> clientSession = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, ct);
+        Task<PeerSession> clientSession = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, cancellationToken: ct);
         _ = clientSession.ContinueWith(t => t.Exception, TaskScheduler.Default);
 
         await Assert.ThrowsAsync<UntrustedPeerException>(async () => await serverSession);

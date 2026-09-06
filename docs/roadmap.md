@@ -55,6 +55,9 @@
 - [x] Синк по локальным изменениям файлов (`FileSystemChangeNotifier` → авто-синк). См. [features/23-file-change-sync](features/23-file-change-sync.md).
 - [x] Выборочный доступ: связывание хранилищ↔устройств в UI, синк только расшаренных (`StorageSharing`). См. [features/24-storage-sharing](features/24-storage-sharing.md).
 - [ ] Рендер QR + сканирование камерой; диалог выбора папки.
+- [x] Разовая передача: протокол ядра (намерение сессии, потоковая передача, подтверждение приёма). См. [features/26-drop-transfer](features/26-drop-transfer.md).
+- [ ] Разовая передача: UI (вкладка «Отправить», диалог приёма, папка «Загрузки»).
+- [ ] **Пакетная отдача блоков в синке** — сейчас всё в одном сообщении, потолок 16 МБ: отдающая падает, принимающая зависает. Подтверждено экспериментом, см. [features/26-drop-transfer](features/26-drop-transfer.md).
 - [x] Discovery-устройства в UI (mDNS): приложение объявляет себя и показывает найденные в сети. См. [features/20-discovery-ui](features/20-discovery-ui.md).
 - [x] Вкладка «Медиа» (срез 1: поиск). См. [features/25-media-scan](features/25-media-scan.md).
 
