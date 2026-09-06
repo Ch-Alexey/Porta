@@ -71,6 +71,44 @@ public class VersionedSyncOverQuicTests : IDisposable
         Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(_folderB, "data.bin"), ct));
     }
 
+    [Fact]
+    public async Task Storage_larger_than_message_limit_syncs_over_quic()
+    {
+        if (!QuicTransport.IsSupported)
+            return;
+
+        // Раньше этот объём валил отдающую сторону на лимите сообщения 16 МБ, а
+        // принимающую вешал навсегда. См. docs/features/27-block-streaming.md.
+        byte[] payload = new byte[25 * 1024 * 1024];
+        new Random(27).NextBytes(payload);
+        await File.WriteAllBytesAsync(Path.Combine(_folderA, "big.bin"), payload);
+
+        using var serverId = DeviceIdentity.Generate();
+        using var clientId = DeviceIdentity.Generate();
+        CancellationToken ct = new CancellationTokenSource(TimeSpan.FromSeconds(120)).Token;
+
+        using var server = new QuicTransport(serverId);
+        using var client = new QuicTransport(clientId);
+        await using var listener = await server.ListenAsync(new IPEndPoint(IPAddress.Loopback, 0), ct);
+        var acceptTask = listener.AcceptAsync(ct).AsTask();
+        var clientConn = await client.ConnectAsync(listener.LocalEndPoint, serverId.Id, ct);
+        var serverConn = await acceptTask;
+
+        var clientSessionTask = PeerSession.EstablishAsync(clientConn, new TrustList(serverId.Id), "Client", isInitiator: true, cancellationToken: ct);
+        var serverSessionTask = PeerSession.EstablishAsync(serverConn, new TrustList(clientId.Id), "Server", isInitiator: false, cancellationToken: ct);
+        await Task.WhenAll(clientSessionTask, serverSessionTask);
+        await using PeerSession cs = await clientSessionTask;
+        await using PeerSession ss = await serverSessionTask;
+
+        Task serve = VersionedSync.ServeAsync(ss.Control, Repo("server2"), id => id == "s1" ? _folderA : null, serverId.Id, cancellationToken: ct);
+        Task<SyncApplyReport> pull = VersionedSync.PullAsync(
+            cs.Control, Repo("client2"), _folderB, "s1", clientId.Id, serverId.Id, cancellationToken: ct);
+        await Task.WhenAll(serve, pull);
+
+        Assert.Equal(1, (await pull).Accepted);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(_folderB, "big.bin"), ct));
+    }
+
     public void Dispose()
     {
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();

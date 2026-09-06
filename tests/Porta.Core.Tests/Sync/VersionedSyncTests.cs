@@ -44,6 +44,22 @@ public class VersionedSyncTests : IDisposable
     }
 
     [Fact]
+    public async Task Syncs_file_larger_than_message_limit()
+    {
+        // Регрессия на дефект, найденный на срезе 26: раньше все блоки уходили одним
+        // сообщением, отдающая сторона падала на лимите 16 МБ, а принимающая зависала.
+        // См. docs/features/27-block-streaming.md.
+        byte[] payload = new byte[20 * 1024 * 1024];
+        new Random(26).NextBytes(payload);
+        await File.WriteAllBytesAsync(Path.Combine(_folderA, "big.bin"), payload);
+
+        SyncApplyReport report = await PullBFromAAsync().WaitAsync(TimeSpan.FromMinutes(2));
+
+        Assert.Equal(1, report.Accepted);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(_folderB, "big.bin")));
+    }
+
+    [Fact]
     public async Task Fresh_pull_copies_file_and_adopts_remote_version()
     {
         WriteFile(_folderA, "doc.txt", "hello from A");

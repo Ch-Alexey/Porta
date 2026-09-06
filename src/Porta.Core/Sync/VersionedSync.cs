@@ -54,13 +54,8 @@ public static class VersionedSync
         var reader = folder is null ? null : new FolderBlockReader(folder, index.Select(v => v.Entry).ToList());
         BlockRequestMessage request = await channel.ReadAsync<BlockRequestMessage>(cancellationToken).ConfigureAwait(false);
 
-        var served = new List<BlockData>(request.Hashes.Count);
-        if (reader is not null)
-            foreach (byte[] hash in request.Hashes)
-                if (reader.TryGet(hash, out byte[] data))
-                    served.Add(new BlockData(hash, data));
-
-        await channel.WriteAsync(new BlockResponseMessage(served), cancellationToken).ConfigureAwait(false);
+        // Пачками, а не одним сообщением: объём синка не ограничен лимитом сообщения.
+        await BlockStreaming.SendAsync(channel, request.Hashes, reader, cancellationToken).ConfigureAwait(false);
 
         // Подтверждение приёма: даём принимающей стороне дочитать ответ до закрытия.
         // Best-effort — если она уже закрыла соединение, данные всё равно доставлены.
@@ -98,10 +93,11 @@ public static class VersionedSync
 
         byte[][] needed = CollectNeededBlocks(localIndex, localByPath, remote.Entries);
         await channel.WriteAsync(new BlockRequestMessage(needed), cancellationToken).ConfigureAwait(false);
-        BlockResponseMessage response = await channel.ReadAsync<BlockResponseMessage>(cancellationToken).ConfigureAwait(false);
 
-        var received = new MemoryBlockSource(
-            response.Blocks.Select(b => new KeyValuePair<byte[], byte[]>(b.Hash, b.Data)));
+        // Полученные блоки складываются на диск: память не зависит от объёма синка.
+        using var received = new SpooledBlockSource();
+        await BlockStreaming.ReceiveAsync(channel, received, cancellationToken).ConfigureAwait(false);
+
         var source = new CompositeBlockSource(received, new FolderBlockReader(folder, localIndex.Select(v => v.Entry).ToList()));
 
         SyncApplyReport report = SyncApplier.Apply(folder, localIndex, remote.Entries, remoteDeviceId, source, versions, clock);
