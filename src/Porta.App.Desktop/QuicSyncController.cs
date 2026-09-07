@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -39,13 +40,24 @@ public sealed class QuicSyncController(AppEnvironment environment) : ISyncContro
         foreach (Storage storage in StorageSelection.ForSync(environment.Storages, peer.DeviceId, trigger))
         {
             SyncApplyReport report = await service
-                .PullAsync(endpoint, peer.DeviceId, storage.Id, storage.LocalPath, cancellationToken: cancellationToken)
+                .PullAsync(
+                    endpoint, peer.DeviceId, storage.Id, storage.LocalPath,
+                    VersionsFor(environment, storage.Id),
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             totalFiles += report.Accepted;
         }
 
         return $"обновлено файлов: {totalFiles}";
     }
+
+    /// <summary>
+    /// Архив прежних версий — в папке данных приложения, а НЕ внутри хранилища: иначе
+    /// копии попадут в индекс и уедут на другое устройство.
+    /// См. docs/features/31-audit-fixes.md.
+    /// </summary>
+    private static IVersionStore VersionsFor(AppEnvironment environment, string storageId)
+        => new FileSystemVersionStore(Path.Combine(environment.DataDirectory, "versions", storageId));
 
     private static IPEndPoint? SelectEndpoint(DiscoveredPeer peer)
         => peer.Endpoints.FirstOrDefault(e => e.Address.AddressFamily == AddressFamily.InterNetwork)

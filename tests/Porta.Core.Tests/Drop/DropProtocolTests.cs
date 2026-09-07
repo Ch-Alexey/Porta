@@ -159,6 +159,37 @@ public class DropProtocolTests : IDisposable
     }
 
     [Fact]
+    public async Task Identical_file_is_not_duplicated()
+    {
+        // «Передать файл, который уже есть»: цель уже достигнута, копия не нужна.
+        // См. docs/features/31-audit-fixes.md.
+        File.WriteAllText(Path.Combine(_destination, "фото.jpg"), "точно такое же");
+        string path = WriteSource("фото.jpg", "точно такое же");
+
+        (DropSendResult send, DropReceiveResult receive) = await ExchangeAsync(
+            [DropSourceFile.FromPath(path)], new FakeAcceptance(DropDecision.Accept(_destination)));
+
+        Assert.True(send.Accepted);
+        Assert.Single(Directory.GetFiles(_destination));
+        Assert.Equal("точно такое же", File.ReadAllText(Path.Combine(_destination, "фото.jpg")));
+        Assert.Equal(Path.Combine(_destination, "фото.jpg"), Assert.Single(receive.Paths));
+    }
+
+    [Fact]
+    public async Task Leftover_temp_files_are_not_left_behind_after_a_duplicate()
+    {
+        File.WriteAllText(Path.Combine(_destination, "фото.jpg"), "одинаково");
+        string path = WriteSource("фото.jpg", "одинаково");
+
+        await ExchangeAsync([DropSourceFile.FromPath(path)],
+            new FakeAcceptance(DropDecision.Accept(_destination)));
+
+        Assert.DoesNotContain(
+            Directory.GetFiles(_destination),
+            f => f.Contains(".porta-drop", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Path_escaping_destination_is_refused()
     {
         string path = WriteSource("evil.txt", "наружу");

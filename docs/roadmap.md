@@ -55,7 +55,10 @@
 - [x] Синк по локальным изменениям файлов (`FileSystemChangeNotifier` → авто-синк). См. [features/23-file-change-sync](features/23-file-change-sync.md).
 - [x] Выборочный доступ: связывание хранилищ↔устройств в UI, синк только расшаренных (`StorageSharing`). См. [features/24-storage-sharing](features/24-storage-sharing.md).
 - [x] Диалог выбора папки; удаление хранилища; отзыв доверия; тумблер авто/ручной и пауза; переинициализация наблюдателя. См. [features/29-managing-what-exists](features/29-managing-what-exists.md).
-- [ ] Рендер QR + сканирование камерой (нужна внешняя библиотека-кодировщик).
+- [x] Рендер QR приглашения (QRCoder). См. [features/30-qr-pairing](features/30-qr-pairing.md).
+- [x] Ревизия сценариев: одинаковые файлы, история версий, дельта. См. [features/31-audit-fixes](features/31-audit-fixes.md).
+- [ ] Сканирование QR камерой — вместе с мобильными головами.
+- [ ] Ротация архива версий и откат версии из UI.
 - [x] Разовая передача: протокол ядра (намерение сессии, потоковая передача, подтверждение приёма). См. [features/26-drop-transfer](features/26-drop-transfer.md).
 - [x] Разовая передача: UI (вкладка «Передача», подтверждение приёма, папка «Загрузки»). См. [features/28-drop-ui](features/28-drop-ui.md).
 - [x] **Пакетная отдача блоков + приём на диск + таймаут чтения** — закрыт потолок 16 МБ и вечное зависание. См. [features/27-block-streaming](features/27-block-streaming.md).

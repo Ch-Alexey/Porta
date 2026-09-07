@@ -228,7 +228,16 @@ public static class DropProtocol
                     throw new InvalidDataException($"Контент-хеш принятого файла не совпал: {header.RelativePath}.");
             }
 
-            // Разовая передача не должна затирать чужие данные — кладём рядом.
+            // Такой же файл уже лежит — второй экземпляр не нужен. Проверяем именно
+            // содержимое, а не имя: цель «файл есть у получателя» уже достигнута.
+            // См. docs/features/31-audit-fixes.md.
+            if (SameContentOnDisk(requested, header.ContentHash))
+            {
+                File.Delete(tempPath);
+                return (requested, size);
+            }
+
+            // Разное содержимое под одним именем — чужие данные не затираем, кладём рядом.
             string finalPath = FreePath(requested);
             File.Move(tempPath, finalPath);
             File.SetLastWriteTimeUtc(finalPath, FromUnixMs(header.ModifiedAtUnixMs));
@@ -239,6 +248,24 @@ public static class DropProtocol
             if (File.Exists(tempPath))
                 File.Delete(tempPath);
             throw;
+        }
+    }
+
+    /// <summary>Лежит ли по этому пути файл ровно с таким содержимым.</summary>
+    private static bool SameContentOnDisk(string path, byte[] contentHash)
+    {
+        if (!File.Exists(path))
+            return false;
+
+        try
+        {
+            using FileStream stream = File.OpenRead(path);
+            return SHA256.HashData(stream).AsSpan().SequenceEqual(contentHash);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Не смогли прочитать — считаем, что файл другой, и кладём копию рядом.
+            return false;
         }
     }
 

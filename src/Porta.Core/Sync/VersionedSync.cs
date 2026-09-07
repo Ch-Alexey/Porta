@@ -157,7 +157,15 @@ public static class VersionedSync
             // Принятые файлы принимают версию удалённого; конфликт/skip оставляют локальное
             // (конфликтная копия попадёт в индекс при следующем rescan).
             if (ConflictResolver.Decide(local, remoteEntry) == SyncAction.Accept)
+            {
                 merged[remoteEntry.Entry.RelativePath] = remoteEntry;
+                continue;
+            }
+
+            // Содержимое совпало, а векторы разошлись — сливаем их, иначе стороны так и
+            // останутся расходящимися. См. docs/features/31-audit-fixes.md.
+            if (local is not null && local.Entry.ContentHash.AsSpan().SequenceEqual(remoteEntry.Entry.ContentHash))
+                merged[remoteEntry.Entry.RelativePath] = local with { Version = local.Version.Merge(remoteEntry.Version) };
         }
 
         return merged.Values.OrderBy(v => v.Entry.RelativePath, StringComparer.Ordinal).ToList();

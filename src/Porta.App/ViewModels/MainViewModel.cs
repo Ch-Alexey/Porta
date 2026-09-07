@@ -23,12 +23,13 @@ public partial class MainViewModel : ViewModelBase
         IFilePicker? filePicker = null,
         UiDropAcceptance? dropAcceptance = null,
         IFolderPicker? folderPicker = null,
-        IWatchedFolders? watchedFolders = null)
+        IWatchedFolders? watchedFolders = null,
+        IQrCodeRenderer? qrRenderer = null)
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
         Storages = new StoragesViewModel(data.Storages, data.Devices, folderPicker, watchedFolders);
-        Devices = new DevicesViewModel(data, discovery, dispatcher, sync);
+        Devices = new DevicesViewModel(data, discovery, dispatcher, sync, qrRenderer ?? new QrCoderRenderer());
         Media = new MediaViewModel(mediaScanner, dispatcher);
         Transfers = new TransfersViewModel(
             settings ?? new InMemorySettingsRepository(),

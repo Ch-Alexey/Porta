@@ -28,11 +28,17 @@ public static class ConflictResolver
         if (local is null)
             return SyncAction.Accept;
 
+        // Одинаковое содержимое — не конфликт, разрешать нечего. Проверяем это ДО разбора
+        // порядка векторов: у двух устройств, никогда не синхронизировавшихся, векторы
+        // параллельны, и раньше это плодило копию-двойник для каждого файла.
+        // См. docs/features/31-audit-fixes.md.
+        if (SameContent(local, remote))
+            return SyncAction.Skip;
+
         return remote.Version.Compare(local.Version) switch
         {
             VectorOrdering.Dominates => SyncAction.Accept,
             VectorOrdering.DominatedBy => SyncAction.Skip,
-            VectorOrdering.Identical => SameContent(local, remote) ? SyncAction.Skip : SyncAction.Conflict,
             _ => SyncAction.Conflict,
         };
     }

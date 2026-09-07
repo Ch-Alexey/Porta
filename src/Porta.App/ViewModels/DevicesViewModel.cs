@@ -24,17 +24,20 @@ public partial class DevicesViewModel : ViewModelBase
     private readonly IAppData _data;
     private readonly IUiDispatcher _dispatcher;
     private readonly ISyncController? _sync;
+    private readonly IQrCodeRenderer? _qr;
     private readonly Dictionary<string, DiscoveredPeer> _peers = new(StringComparer.Ordinal);
 
     public DevicesViewModel(
         IAppData data,
         IDeviceDiscovery? discovery = null,
         IUiDispatcher? dispatcher = null,
-        ISyncController? sync = null)
+        ISyncController? sync = null,
+        IQrCodeRenderer? qr = null)
     {
         _data = data;
         _dispatcher = dispatcher ?? new AvaloniaUiDispatcher();
         _sync = sync;
+        _qr = qr;
         Reload();
 
         if (discovery is not null)
@@ -55,6 +58,14 @@ public partial class DevicesViewModel : ViewModelBase
     /// <summary>Токен приглашения этого устройства (для QR/копирования).</summary>
     [ObservableProperty]
     public partial string InvitationToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Тот же токен картинкой (PNG). Байты, а не готовый <c>Bitmap</c>: view-модель
+    /// остаётся тестируемой без графической подсистемы, картинку собирает конвертер
+    /// во view-слое. См. docs/features/30-qr-pairing.md.
+    /// </summary>
+    [ObservableProperty]
+    public partial byte[]? InvitationQrPng { get; set; }
 
     /// <summary>Вставленный токен другого устройства.</summary>
     [ObservableProperty]
@@ -79,7 +90,35 @@ public partial class DevicesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void GenerateInvitation() => InvitationToken = _data.CreateInvitation();
+    private void GenerateInvitation()
+    {
+        InvitationToken = _data.CreateInvitation();
+        InvitationQrPng = RenderQr(InvitationToken);
+    }
+
+    /// <summary>Убрать приглашение с экрана — оно одноразовое и не должно висеть вечно.</summary>
+    [RelayCommand]
+    private void HideInvitation()
+    {
+        InvitationToken = string.Empty;
+        InvitationQrPng = null;
+    }
+
+    private byte[]? RenderQr(string token)
+    {
+        if (_qr is null || string.IsNullOrWhiteSpace(token))
+            return null;
+
+        try
+        {
+            return _qr.RenderPng(token);
+        }
+        catch (Exception)
+        {
+            // Без картинки токен всё равно можно скопировать строкой — не роняем вкладку.
+            return null;
+        }
+    }
 
     [RelayCommand]
     private void Connect()

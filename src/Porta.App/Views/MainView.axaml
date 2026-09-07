@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Porta.App.ViewModels"
              xmlns:design="using:Porta.App.Design"
+             xmlns:conv="using:Porta.App.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
              x:Class="Porta.App.Views.MainView"
              x:DataType="vm:MainViewModel">
@@ -97,8 +98,22 @@
                             BorderThickness="1" CornerRadius="6" BorderBrush="Gray">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Добавить устройство" FontWeight="SemiBold" />
-                            <Button Content="Показать приглашение"
-                                    Command="{Binding Devices.GenerateInvitationCommand}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Показать приглашение"
+                                        Command="{Binding Devices.GenerateInvitationCommand}" />
+                                <Button Content="Скрыть"
+                                        Command="{Binding Devices.HideInvitationCommand}"
+                                        IsVisible="{Binding Devices.InvitationToken, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                            <Border Background="White" Padding="10" CornerRadius="6"
+                                    HorizontalAlignment="Center"
+                                    IsVisible="{Binding Devices.InvitationQrPng, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Image Width="220" Height="220"
+                                       Source="{Binding Devices.InvitationQrPng, Converter={x:Static conv:PngToBitmapConverter.Instance}}" />
+                            </Border>
+                            <TextBlock Text="Наведите камеру другого устройства или скопируйте строку"
+                                       Opacity="0.6" FontSize="11" HorizontalAlignment="Center"
+                                       IsVisible="{Binding Devices.InvitationQrPng, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             <TextBox Text="{Binding Devices.InvitationToken}" IsReadOnly="True"
                                      FontFamily="monospace" FontSize="11" TextWrapping="Wrap"
                                      IsVisible="{Binding Devices.InvitationToken, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
