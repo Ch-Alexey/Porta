@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Porta.Core.Identity;
 using Porta.Core.Protocol;
 using Porta.Core.Sync;
+using Porta.Core.Sync;
 
 namespace Porta.Core.Drop;
 
@@ -25,6 +26,7 @@ public static class DropProtocol
         MessageChannel channel,
         IReadOnlyList<DropSourceFile> files,
         string? transferId = null,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -45,9 +47,20 @@ public static class DropProtocol
             return new DropSendResult(false, 0, 0, decision.Reason ?? "Получатель отклонил передачу");
         }
 
+        var reporter = new ThrottledProgress(progress);
+        long total = offer.TotalSize;
         long bytes = 0;
+        int done = 0;
         foreach (DropSourceFile file in files)
-            bytes += await SendFileAsync(channel, file, cancellationToken).ConfigureAwait(false);
+        {
+            bytes += await SendFileAsync(
+                channel, file, cancellationToken,
+                sent => reporter.Report(new TransferProgress(done, files.Count, bytes + sent, total, file.RelativePath)))
+                .ConfigureAwait(false);
+            done++;
+        }
+
+        reporter.ReportFinal(new TransferProgress(done, files.Count, bytes, total));
 
         // Ждём подтверждения: получатель дописал всё на диск, соединение можно закрывать.
         // Best-effort — данные уже переданы, обрыв на этом шаге результата не меняет.
@@ -71,6 +84,7 @@ public static class DropProtocol
         MessageChannel channel,
         IDropAcceptance acceptance,
         DeviceId sender,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -95,14 +109,22 @@ public static class DropProtocol
         Directory.CreateDirectory(destination);
         await channel.WriteAsync(new DropDecisionMessage(true), cancellationToken).ConfigureAwait(false);
 
+        var reporter = new ThrottledProgress(progress);
         var written = new List<string>(offer.Files.Count);
         long bytes = 0;
         foreach (DropFileInfo _ in offer.Files)
         {
-            (string path, long size) = await ReceiveFileAsync(channel, destination, cancellationToken).ConfigureAwait(false);
+            long before = bytes;
+            (string path, long size) = await ReceiveFileAsync(
+                channel, destination, cancellationToken,
+                (name, got) => reporter.Report(
+                    new TransferProgress(written.Count, offer.Files.Count, before + got, offer.TotalSize, name)))
+                .ConfigureAwait(false);
             written.Add(path);
             bytes += size;
         }
+
+        reporter.ReportFinal(new TransferProgress(written.Count, offer.Files.Count, bytes, offer.TotalSize));
 
         // Подтверждаем приём — сигнал отправителю, что можно закрывать соединение.
         try
@@ -154,7 +176,8 @@ public static class DropProtocol
     private static async Task<long> SendFileAsync(
         MessageChannel channel,
         DropSourceFile file,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<long>? onSent = null)
     {
         var info = new FileInfo(file.FullPath);
         byte[] contentHash;
@@ -180,6 +203,7 @@ public static class DropProtocol
 
             sent += read;
             await channel.WriteAsync(new DropChunkMessage(buffer[..read], false), cancellationToken).ConfigureAwait(false);
+            onSent?.Invoke(sent);
         }
 
         return sent;
@@ -188,7 +212,8 @@ public static class DropProtocol
     private static async Task<(string Path, long Size)> ReceiveFileAsync(
         MessageChannel channel,
         string destination,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, long>? onReceived = null)
     {
         DropFileHeaderMessage header =
             await channel.ReadAsync<DropFileHeaderMessage>(cancellationToken).ConfigureAwait(false);
@@ -217,6 +242,7 @@ public static class DropProtocol
                             size += chunk.Data.Length;
                             hasher.AppendData(chunk.Data);
                             await stream.WriteAsync(chunk.Data, cancellationToken).ConfigureAwait(false);
+                            onReceived?.Invoke(header.RelativePath, size);
                         }
 
                         if (chunk.IsLast)

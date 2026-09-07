@@ -82,7 +82,7 @@ public class DropOverQuicTests : IDisposable
         await using ITransportListener listener = await transportA.ListenAsync(new IPEndPoint(IPAddress.Loopback, 0), ct);
         Task serve = receiver.ServeOnceAsync(listener, _ => null, drops: acceptance, cancellationToken: ct);
         Task<DropSendResult> send = sender.SendFilesAsync(
-            listener.LocalEndPoint, idA.Id, [DropSourceFile.FromPath(file)], ct);
+            listener.LocalEndPoint, idA.Id, [DropSourceFile.FromPath(file)], cancellationToken: ct);
 
         await Task.WhenAll(serve, send);
 
@@ -117,7 +117,7 @@ public class DropOverQuicTests : IDisposable
         await using ITransportListener listener = await transportA.ListenAsync(new IPEndPoint(IPAddress.Loopback, 0), ct);
         Task serve = receiver.ServeOnceAsync(listener, _ => null, cancellationToken: ct);
         Task<DropSendResult> send = sender.SendFilesAsync(
-            listener.LocalEndPoint, idA.Id, [DropSourceFile.FromPath(file)], ct);
+            listener.LocalEndPoint, idA.Id, [DropSourceFile.FromPath(file)], cancellationToken: ct);
 
         await Task.WhenAll(serve, send);
 

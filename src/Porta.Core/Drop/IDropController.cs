@@ -1,4 +1,5 @@
 using Porta.Core.Discovery;
+using Porta.Core.Sync;
 
 namespace Porta.Core.Drop;
 
@@ -12,5 +13,6 @@ public interface IDropController
     Task<DropSendResult> SendAsync(
         DiscoveredPeer peer,
         IReadOnlyList<DropSourceFile> files,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }

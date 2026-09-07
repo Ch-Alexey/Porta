@@ -70,6 +70,25 @@ public class MediaViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Results_arrive_in_batches_not_only_at_the_end()
+    {
+        // Больше одной пачки — иначе проверка ничего не доказывает.
+        for (int i = 0; i < MediaViewModel.BatchSize * 2 + 5; i++)
+            WriteFile($"sub{i}/photo{i}.jpg");
+
+        MediaViewModel vm = CreateViewModel();
+        var growth = new List<int>();
+        vm.Results.CollectionChanged += (_, _) => growth.Add(vm.Results.Count);
+
+        await vm.ScanCommand.ExecuteAsync(null);
+
+        // Список наполнялся частями, а не одним куском в конце.
+        Assert.True(growth.Count > MediaViewModel.BatchSize,
+            $"список менялся {growth.Count} раз — похоже, всё пришло одним куском");
+        Assert.Equal(MediaViewModel.BatchSize * 2 + 5, vm.Results.Count);
+    }
+
+    [Fact]
     public async Task Rescan_replaces_previous_results()
     {
         WriteFile("a.jpg");

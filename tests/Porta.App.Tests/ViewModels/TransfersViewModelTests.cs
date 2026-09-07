@@ -149,16 +149,59 @@ public class TransfersViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Progress_is_shown_while_sending()
+    {
+        string a = WriteFile("a.bin", 16);
+        using var id = DeviceIdentity.Generate();
+        var discovery = new FakeDeviceDiscovery();
+        var drops = new FakeDropController();
+        drops.Reports.Add(new Porta.Core.Sync.TransferProgress(0, 2, 512, 2048, "a.bin"));
+        var progressSeen = new List<string?>();
+
+        TransfersViewModel vm = Create(drops, new FakeFilePicker(a), discovery);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(vm.ProgressText))
+                progressSeen.Add(vm.ProgressText);
+        };
+        discovery.RaiseDiscovered(Peer(id.Id));
+        vm.SelectedPeer = vm.Peers.Single();
+        await vm.PickFilesCommand.ExecuteAsync(null);
+        await vm.SendCommand.ExecuteAsync(null);
+
+        Assert.Contains(progressSeen, t => t is not null && t.Contains("из 2 файлов"));
+        // По завершении полоса убирается — иначе она врала бы про идущую работу.
+        Assert.Null(vm.ProgressText);
+        Assert.Equal(0, vm.ProgressFraction);
+    }
+
+    [Fact]
+    public void Incoming_progress_is_shown_and_cleared_when_finished()
+    {
+        var acceptance = new UiDropAcceptance(() => _root, TimeSpan.FromSeconds(5));
+        TransfersViewModel vm = Create(acceptance: acceptance);
+
+        acceptance.Progress.Report(new Porta.Core.Sync.TransferProgress(0, 2, 512, 2048, "a.jpg"));
+        Assert.Contains("Приём:", vm.IncomingProgressText);
+
+        acceptance.Progress.Report(new Porta.Core.Sync.TransferProgress(2, 2, 2048, 2048));
+        Assert.Null(vm.IncomingProgressText);
+    }
+
+    [Fact]
     public void Downloads_folder_defaults_and_is_saved()
     {
         TransfersViewModel vm = Create();
         Assert.Equal(TransfersViewModel.DefaultDownloadsFolder(), vm.DownloadsFolder);
 
-        vm.DownloadsFolder = "/Users/me/Принятое";
+        // Путь во временной папке: сохранение теперь проверяет папку, создавая её.
+        string target = Path.Combine(_root, "Принятое");
+        vm.DownloadsFolder = target;
         vm.SaveDownloadsFolderCommand.Execute(null);
 
-        Assert.Equal("/Users/me/Принятое", _settings.Get(SettingKeys.DownloadsFolder, "нет"));
-        Assert.Equal("/Users/me/Принятое", vm.CurrentDownloadsFolder());
+        Assert.Equal(target, _settings.Get(SettingKeys.DownloadsFolder, "нет"));
+        Assert.Equal(target, vm.CurrentDownloadsFolder());
+        Assert.True(Directory.Exists(target), "папка должна быть создана при сохранении");
     }
 
     [Fact]

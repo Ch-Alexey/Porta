@@ -20,5 +20,6 @@ public interface ISyncController
     Task<string> SyncWithPeerAsync(
         DiscoveredPeer peer,
         SyncTrigger trigger = SyncTrigger.Manual,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }

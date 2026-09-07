@@ -56,6 +56,37 @@
                             </StackPanel>
                             <TextBlock Text="{Binding Storages.StatusMessage}" Opacity="0.8" TextWrapping="Wrap"
                                        IsVisible="{Binding Storages.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <Separator />
+
+                            <TextBlock Text="История версий" FontWeight="SemiBold" />
+                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Хранилище"
+                                      ItemsSource="{Binding Storages.Items}"
+                                      SelectedItem="{Binding Versions.SelectedStorage}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Обновить" Margin="8,0,0,0"
+                                        Command="{Binding Versions.RefreshCommand}" />
+                                <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Файл"
+                                          ItemsSource="{Binding Versions.Files}"
+                                          SelectedItem="{Binding Versions.SelectedFile}" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Versions.Versions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:VersionItem">
+                                        <DockPanel Margin="0,3">
+                                            <Button DockPanel.Dock="Right" Content="Восстановить" FontSize="11"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding RestoreCommand}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding ArchivedAt}" FontSize="12" />
+                                                <TextBlock Text="{Binding Size}" FontSize="11" Opacity="0.6" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding Versions.StatusMessage}" Opacity="0.8" TextWrapping="Wrap"
+                                       IsVisible="{Binding Versions.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
                     </Border>
 
@@ -68,7 +99,7 @@
                                         <Button Content="{Binding SyncModeText}" FontSize="11"
                                                 Command="{Binding ToggleSyncModeCommand}"
                                                 ToolTip.Tip="Переключить авто/ручную синхронизацию" />
-                                        <Button Content="Пауза" FontSize="11"
+                                        <Button Content="{Binding PauseButtonText}" FontSize="11"
                                                 Command="{Binding TogglePausedCommand}" />
                                         <Button Content="Убрать" FontSize="11"
                                                 Command="{Binding RemoveCommand}"
@@ -114,6 +145,9 @@
                             <TextBlock Text="Наведите камеру другого устройства или скопируйте строку"
                                        Opacity="0.6" FontSize="11" HorizontalAlignment="Center"
                                        IsVisible="{Binding Devices.InvitationQrPng, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Text="{Binding Devices.InvitationExpiryText}" Opacity="0.6" FontSize="11"
+                                       HorizontalAlignment="Center"
+                                       IsVisible="{Binding Devices.InvitationExpiryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBox Text="{Binding Devices.InvitationToken}" IsReadOnly="True"
                                      FontFamily="monospace" FontSize="11" TextWrapping="Wrap"
                                      IsVisible="{Binding Devices.InvitationToken, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -153,11 +187,20 @@
                             </ItemsControl>
 
                             <DockPanel Margin="0,8,0,0">
-                                <Button DockPanel.Dock="Right" Content="Синхронизировать"
-                                        Command="{Binding Devices.SyncWithFoundCommand}"
-                                        IsEnabled="{Binding Devices.CanSync}" />
-                                <TextBlock Text="Найдены в сети" FontWeight="SemiBold" Opacity="0.8"
-                                           VerticalAlignment="Center" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                                    <Button Content="Отменить"
+                                            Command="{Binding Devices.CancelSyncCommand}"
+                                            IsVisible="{Binding Devices.IsSyncing}" />
+                                    <Button Content="Синхронизировать"
+                                            Command="{Binding Devices.SyncWithFoundCommand}"
+                                            IsEnabled="{Binding Devices.CanSync}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <TextBlock Text="Найдены в сети" FontWeight="SemiBold" Opacity="0.8" />
+                                    <TextBlock Text="{Binding Devices.SyncProgressText}" Opacity="0.6" FontSize="11"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding Devices.SyncProgressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
                             </DockPanel>
                             <ItemsControl ItemsSource="{Binding Devices.DiscoveredPeers}">
                                 <ItemsControl.ItemTemplate>
@@ -189,9 +232,19 @@
                             <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Кому отправить"
                                       ItemsSource="{Binding Transfers.Peers}"
                                       SelectedItem="{Binding Transfers.SelectedPeer}" />
-                            <Button Content="Отправить" HorizontalAlignment="Right"
-                                    Command="{Binding Transfers.SendCommand}"
-                                    IsEnabled="{Binding !Transfers.IsSending}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="Отменить"
+                                        Command="{Binding Transfers.CancelSendCommand}"
+                                        IsVisible="{Binding Transfers.IsSending}" />
+                                <Button Content="Отправить"
+                                        Command="{Binding Transfers.SendCommand}"
+                                        IsEnabled="{Binding !Transfers.IsSending}" />
+                            </StackPanel>
+                            <ProgressBar Minimum="0" Maximum="1" Height="4"
+                                         Value="{Binding Transfers.ProgressFraction}"
+                                         IsVisible="{Binding Transfers.IsSending}" />
+                            <TextBlock Text="{Binding Transfers.ProgressText}" Opacity="0.7" FontSize="11"
+                                       IsVisible="{Binding Transfers.ProgressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding Transfers.StatusMessage}" Opacity="0.8" TextWrapping="Wrap"
                                        IsVisible="{Binding Transfers.StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
@@ -214,6 +267,8 @@
                     <ScrollViewer>
                         <StackPanel Spacing="12">
                             <TextBlock Text="Входящие передачи" FontWeight="SemiBold" Opacity="0.8" />
+                            <TextBlock Text="{Binding Transfers.IncomingProgressText}" Opacity="0.7" FontSize="11"
+                                       IsVisible="{Binding Transfers.IncomingProgressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="Пока нет входящих передач" Opacity="0.5" FontSize="12"
                                        IsVisible="{Binding !Transfers.IncomingOffers.Count}" />
                             <ItemsControl ItemsSource="{Binding Transfers.IncomingOffers}">
@@ -269,7 +324,15 @@
                                 <CheckBox Content="Фото" IsChecked="{Binding Media.IncludePhotos}" />
                                 <CheckBox Content="Видео" IsChecked="{Binding Media.IncludeVideos}" />
                             </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Width="150" PlaceholderText="Не старше, дней"
+                                         Text="{Binding Media.MaxAgeDays}" />
+                                <TextBox Width="150" PlaceholderText="Не меньше, МБ"
+                                         Text="{Binding Media.MinSizeMb}" />
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="Отправить найденное"
+                                        Command="{Binding Media.SendFoundCommand}" />
                                 <Button Content="Стоп" Command="{Binding Media.StopCommand}"
                                         IsEnabled="{Binding Media.IsScanning}" />
                                 <Button Content="Искать" Command="{Binding Media.ScanCommand}" />
@@ -284,8 +347,7 @@
                             <DataTemplate x:DataType="vm:MediaItem">
                                 <StackPanel Spacing="2" Margin="0,4">
                                     <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding FullPath}" Opacity="0.7" FontSize="12"
-                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding DisplayPath}" Opacity="0.7" FontSize="12" />
                                     <StackPanel Orientation="Horizontal" Spacing="10" Opacity="0.6">
                                         <TextBlock Text="{Binding Kind}" FontSize="11" />
                                         <TextBlock Text="{Binding Size}" FontSize="11" />

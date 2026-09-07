@@ -58,7 +58,10 @@
 - [x] Рендер QR приглашения (QRCoder). См. [features/30-qr-pairing](features/30-qr-pairing.md).
 - [x] Ревизия сценариев: одинаковые файлы, история версий, дельта. См. [features/31-audit-fixes](features/31-audit-fixes.md).
 - [ ] Сканирование QR камерой — вместе с мобильными головами.
-- [ ] Ротация архива версий и откат версии из UI.
+- [x] Ротация архива версий и откат версии из UI. См. [features/32-version-history](features/32-version-history.md).
+- [x] Прогресс и отмена передачи/синхронизации. См. [features/33-progress-and-cancel](features/33-progress-and-cancel.md).
+- [x] Мелочи интерфейса (пауза, протухание приглашения, фильтры медиа, отзыв доверия). См. [features/34-ui-polish](features/34-ui-polish.md).
+- [x] Уборка: удалён мёртвый `SyncProtocol`, убираются брошенные времянки. См. [features/35-cleanup](features/35-cleanup.md).
 - [x] Разовая передача: протокол ядра (намерение сессии, потоковая передача, подтверждение приёма). См. [features/26-drop-transfer](features/26-drop-transfer.md).
 - [x] Разовая передача: UI (вкладка «Передача», подтверждение приёма, папка «Загрузки»). См. [features/28-drop-ui](features/28-drop-ui.md).
 - [x] **Пакетная отдача блоков + приём на диск + таймаут чтения** — закрыт потолок 16 МБ и вечное зависание. См. [features/27-block-streaming](features/27-block-streaming.md).

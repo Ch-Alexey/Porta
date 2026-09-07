@@ -80,6 +80,7 @@ public static class VersionedSync
         IVersionStore? versions = null,
         IgnoreRules? ignore = null,
         TimeProvider? clock = null,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -92,11 +93,14 @@ public static class VersionedSync
             await channel.ReadAsync<VersionedFolderIndexMessage>(cancellationToken).ConfigureAwait(false);
 
         byte[][] needed = CollectNeededBlocks(localIndex, localByPath, remote.Entries);
+        // Сколько байт ждём — считаем по длинам запрошенных блоков в удалённом индексе,
+        // чтобы проценты были честными, а не выдуманными.
+        long expectedBytes = ExpectedBytes(needed, remote.Entries);
         await channel.WriteAsync(new BlockRequestMessage(needed), cancellationToken).ConfigureAwait(false);
 
         // Полученные блоки складываются на диск: память не зависит от объёма синка.
         using var received = new SpooledBlockSource();
-        await BlockStreaming.ReceiveAsync(channel, received, cancellationToken).ConfigureAwait(false);
+        await BlockStreaming.ReceiveAsync(channel, received, expectedBytes, progress, cancellationToken).ConfigureAwait(false);
 
         var source = new CompositeBlockSource(received, new FolderBlockReader(folder, localIndex.Select(v => v.Entry).ToList()));
 
@@ -144,6 +148,21 @@ public static class VersionedSync
             }
         }
         return needed.ToArray();
+    }
+
+    /// <summary>Сколько байт составляют запрошенные блоки по удалённому индексу.</summary>
+    private static long ExpectedBytes(byte[][] needed, IReadOnlyList<VersionedFileEntry> remote)
+    {
+        var sizes = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (VersionedFileEntry entry in remote)
+            foreach (ChunkInfo chunk in entry.Entry.Chunks)
+                sizes[chunk.HashHex] = chunk.Length;
+
+        long total = 0;
+        foreach (byte[] hash in needed)
+            if (sizes.TryGetValue(Convert.ToHexString(hash), out int length))
+                total += length;
+        return total;
     }
 
     private static IReadOnlyList<VersionedFileEntry> MergeAfterPull(

@@ -1,4 +1,4 @@
-using System.IO;
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -17,11 +17,15 @@ namespace Porta.App.Desktop;
 /// Реализация синхронизации из UI поверх QUIC: подключается к найденному устройству и
 /// тянет все локальные хранилища. См. docs/features/21-sync-from-ui.md.
 /// </summary>
-public sealed class QuicSyncController(AppEnvironment environment) : ISyncController
+public sealed class QuicSyncController(
+    AppEnvironment environment,
+    IVersionArchive versions,
+    PeerOperations? operations = null) : ISyncController
 {
     public async Task<string> SyncWithPeerAsync(
         DiscoveredPeer peer,
         SyncTrigger trigger = SyncTrigger.Manual,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         if (!QuicTransport.IsSupported)
@@ -30,6 +34,10 @@ public sealed class QuicSyncController(AppEnvironment environment) : ISyncContro
         IPEndPoint? endpoint = SelectEndpoint(peer);
         if (endpoint is null)
             return "У устройства нет доступного адреса";
+
+        // Регистрируем операцию: при отзыве доверия её надо оборвать, а не ждать конца.
+        using PeerOperations.Operation? scope = operations?.Begin(peer.DeviceId, cancellationToken);
+        CancellationToken token = scope?.Token ?? cancellationToken;
 
         using var transport = new QuicTransport(environment.Identity);
         var service = new SyncService(
@@ -42,22 +50,15 @@ public sealed class QuicSyncController(AppEnvironment environment) : ISyncContro
             SyncApplyReport report = await service
                 .PullAsync(
                     endpoint, peer.DeviceId, storage.Id, storage.LocalPath,
-                    VersionsFor(environment, storage.Id),
-                    cancellationToken: cancellationToken)
+                    versions.StoreFor(storage.Id),
+                    progress: progress,
+                    cancellationToken: token)
                 .ConfigureAwait(false);
             totalFiles += report.Accepted;
         }
 
         return $"обновлено файлов: {totalFiles}";
     }
-
-    /// <summary>
-    /// Архив прежних версий — в папке данных приложения, а НЕ внутри хранилища: иначе
-    /// копии попадут в индекс и уедут на другое устройство.
-    /// См. docs/features/31-audit-fixes.md.
-    /// </summary>
-    private static IVersionStore VersionsFor(AppEnvironment environment, string storageId)
-        => new FileSystemVersionStore(Path.Combine(environment.DataDirectory, "versions", storageId));
 
     private static IPEndPoint? SelectEndpoint(DiscoveredPeer peer)
         => peer.Endpoints.FirstOrDefault(e => e.Address.AddressFamily == AddressFamily.InterNetwork)

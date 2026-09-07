@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Porta.App;
@@ -31,16 +32,27 @@ sealed class Program
 
         // Разовые передачи: приём спрашивает человека через UI, отправка идёт по QUIC.
         var settings = new SettingsRepository(environment.Database);
+
+        // Уборка времянок, брошенных при жёстком обрыве прошлого запуска.
+        // См. docs/features/35-cleanup.md.
+        CleanStaleTemporaries(settings);
         var acceptance = new UiDropAcceptance(
             () => settings.Get(SettingKeys.DownloadsFolder, TransfersViewModel.DefaultDownloadsFolder()));
         App.InjectedSettings = settings;
         App.InjectedDropAcceptance = acceptance;
-        App.InjectedDrops = new QuicDropController(environment);
+        // операции регистрируются ниже, вместе с контроллером синка
 
-        var syncListener = new BackgroundSyncListener(environment, SyncPort, acceptance);
+        var syncListener = new BackgroundSyncListener(environment, SyncPort, acceptance, acceptance.Progress);
         syncListener.Start();
-        var syncController = new QuicSyncController(environment);
+        // Архив прежних версий — в папке данных приложения, вне папок хранилищ,
+        // иначе копии попали бы в индекс и уехали на другое устройство.
+        var versions = new FileSystemVersionArchive(Path.Combine(environment.DataDirectory, "versions"));
+        App.InjectedVersions = versions;
+        var operations = new PeerOperations();
+        App.InjectedOperations = operations;
+        var syncController = new QuicSyncController(environment, versions, operations);
         App.InjectedSync = syncController;
+        App.InjectedDrops = new QuicDropController(environment, operations);
 
         // Авто-синхро: при появлении доверенного устройства И при локальных изменениях файлов.
         AutoSyncCoordinator? autoSync = null;
@@ -62,10 +74,20 @@ sealed class Program
         finally
         {
             autoSync?.Dispose();
+            operations.Dispose();
             changes?.Dispose();
             syncListener.DisposeAsync().AsTask().GetAwaiter().GetResult();
             (App.InjectedDiscovery as IDisposable)?.Dispose();
         }
+    }
+
+    /// <summary>Убрать времянки, оставшиеся от убитого процесса. Молча, но не вслепую.</summary>
+    private static void CleanStaleTemporaries(SettingsRepository settings)
+    {
+        string downloads = settings.Get(SettingKeys.DownloadsFolder, TransfersViewModel.DefaultDownloadsFolder());
+        int removed = StaleFileCleanup.CleanDropTemporaries(downloads) + StaleFileCleanup.CleanBlockSpools();
+        if (removed > 0)
+            Console.WriteLine($"Убрано брошенных времянок: {removed}");
     }
 
     private static IDeviceDiscovery? TryStartDiscovery(AppEnvironment environment)

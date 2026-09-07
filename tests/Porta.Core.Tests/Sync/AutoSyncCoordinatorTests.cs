@@ -35,7 +35,7 @@ public class AutoSyncCoordinatorTests
                 _gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
-        public async Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, CancellationToken cancellationToken = default)
+        public async Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, IProgress<TransferProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref Calls);
             if (_gate is not null)

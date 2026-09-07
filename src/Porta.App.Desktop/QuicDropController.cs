@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -16,11 +17,12 @@ namespace Porta.App.Desktop;
 /// <summary>
 /// Разовая отправка файлов поверх QUIC. См. docs/features/28-drop-ui.md.
 /// </summary>
-public sealed class QuicDropController(AppEnvironment environment) : IDropController
+public sealed class QuicDropController(AppEnvironment environment, PeerOperations? operations = null) : IDropController
 {
     public async Task<DropSendResult> SendAsync(
         DiscoveredPeer peer,
         IReadOnlyList<DropSourceFile> files,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         if (!QuicTransport.IsSupported)
@@ -30,12 +32,15 @@ public sealed class QuicDropController(AppEnvironment environment) : IDropContro
         if (endpoint is null)
             return new DropSendResult(false, 0, 0, "У устройства нет доступного адреса");
 
+        using PeerOperations.Operation? scope = operations?.Begin(peer.DeviceId, cancellationToken);
+        CancellationToken token = scope?.Token ?? cancellationToken;
+
         using var transport = new QuicTransport(environment.Identity);
         var service = new SyncService(
             transport, environment.Identity, environment.DeviceName,
             new DeviceRepositoryTrustPolicy(environment.Devices), environment.FileIndex);
 
-        return await service.SendFilesAsync(endpoint, peer.DeviceId, files, cancellationToken).ConfigureAwait(false);
+        return await service.SendFilesAsync(endpoint, peer.DeviceId, files, progress, token).ConfigureAwait(false);
     }
 
     private static IPEndPoint? SelectEndpoint(DiscoveredPeer peer)

@@ -43,6 +43,7 @@ public sealed class SyncService
         string folder,
         IVersionStore? versions = null,
         IgnoreRules? ignore = null,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         await using IPeerConnection connection = await _transport.ConnectAsync(endpoint, peer, cancellationToken).ConfigureAwait(false);
@@ -51,7 +52,8 @@ public sealed class SyncService
             SessionIntentKind.Sync, cancellationToken).ConfigureAwait(false);
 
         return await VersionedSync.PullAsync(
-            session.Control, _index, folder, storageId, _self.Id, peer, versions, ignore, cancellationToken: cancellationToken)
+            session.Control, _index, folder, storageId, _self.Id, peer, versions, ignore,
+            progress: progress, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -60,6 +62,7 @@ public sealed class SyncService
         IPEndPoint endpoint,
         DeviceId peer,
         IReadOnlyList<DropSourceFile> files,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         await using IPeerConnection connection = await _transport.ConnectAsync(endpoint, peer, cancellationToken).ConfigureAwait(false);
@@ -67,7 +70,8 @@ public sealed class SyncService
             connection, _trust, _selfName, isInitiator: true,
             SessionIntentKind.Drop, cancellationToken).ConfigureAwait(false);
 
-        return await DropProtocol.SendAsync(session.Control, files, cancellationToken: cancellationToken)
+        return await DropProtocol.SendAsync(
+            session.Control, files, transferId: null, progress, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -82,6 +86,7 @@ public sealed class SyncService
         Func<string, string?> resolveFolder,
         IgnoreRules? ignore = null,
         IDropAcceptance? drops = null,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         await using IPeerConnection connection = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
@@ -92,7 +97,8 @@ public sealed class SyncService
         if (session.Intent == SessionIntentKind.Drop)
         {
             await DropProtocol.ReceiveAsync(
-                session.Control, drops ?? RejectingAcceptance.Instance, session.RemoteDeviceId, cancellationToken)
+                session.Control, drops ?? RejectingAcceptance.Instance, session.RemoteDeviceId,
+                progress, cancellationToken)
                 .ConfigureAwait(false);
             return;
         }

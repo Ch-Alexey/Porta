@@ -224,6 +224,76 @@ public class DropProtocolTests : IDisposable
         Assert.Empty(Directory.GetFiles(_destination));
     }
 
+    /// <summary>Собирает отчёты о ходе передачи.</summary>
+    private sealed class ProgressSink : IProgress<Porta.Core.Sync.TransferProgress>
+    {
+        public List<Porta.Core.Sync.TransferProgress> Reports { get; } = [];
+
+        public void Report(Porta.Core.Sync.TransferProgress value) => Reports.Add(value);
+    }
+
+    [Fact]
+    public async Task Sending_reports_progress_and_finishes_at_the_full_amount()
+    {
+        byte[] big = RandomNumberGenerator.GetBytes(3 * 1024 * 1024);
+        string path = WriteSource("big.bin", big);
+        var sent = new ProgressSink();
+        var got = new ProgressSink();
+
+        (MessageChannel a, MessageChannel b) = ConnectedChannels.Create();
+        Task<DropSendResult> send = DropProtocol.SendAsync(a, [DropSourceFile.FromPath(path)], null, sent);
+        Task<DropReceiveResult> receive = DropProtocol.ReceiveAsync(
+            b, new FakeAcceptance(DropDecision.Accept(_destination)), _sender, got);
+        await Task.WhenAll(send, receive);
+
+        // Последний отчёт обязателен и содержит полные числа — на него и смотрит человек.
+        Assert.Equal(big.Length, sent.Reports[^1].BytesDone);
+        Assert.Equal(1, sent.Reports[^1].FilesDone);
+        Assert.Equal(big.Length, got.Reports[^1].BytesDone);
+        Assert.Equal(1.0, sent.Reports[^1].Fraction);
+    }
+
+    [Fact]
+    public async Task Progress_is_throttled_not_one_report_per_chunk()
+    {
+        // 3 МиБ кусками по 256 КиБ — это 12 кусков; отчётов должно быть меньше.
+        byte[] big = RandomNumberGenerator.GetBytes(3 * 1024 * 1024);
+        string path = WriteSource("big.bin", big);
+        var sink = new ProgressSink();
+
+        (MessageChannel a, MessageChannel b) = ConnectedChannels.Create();
+        Task<DropSendResult> send = DropProtocol.SendAsync(a, [DropSourceFile.FromPath(path)], null, sink);
+        Task<DropReceiveResult> receive = DropProtocol.ReceiveAsync(
+            b, new FakeAcceptance(DropDecision.Accept(_destination)), _sender);
+        await Task.WhenAll(send, receive);
+
+        int chunks = big.Length / DropProtocol.ChunkSize;
+        Assert.True(sink.Reports.Count <= chunks, $"отчётов {sink.Reports.Count}, кусков {chunks} — прореживание не работает");
+    }
+
+    [Fact]
+    public async Task Cancelling_mid_transfer_leaves_no_temp_files()
+    {
+        byte[] big = RandomNumberGenerator.GetBytes(6 * 1024 * 1024);
+        string path = WriteSource("big.bin", big);
+        using var cts = new CancellationTokenSource();
+
+        (MessageChannel a, MessageChannel b) = ConnectedChannels.Create();
+        // Отменяем, как только пошло содержимое.
+        var progress = new Progress<Porta.Core.Sync.TransferProgress>(_ => cts.Cancel());
+
+        Task<DropSendResult> send = DropProtocol.SendAsync(
+            a, [DropSourceFile.FromPath(path)], null, progress, cts.Token);
+        Task<DropReceiveResult> receive = DropProtocol.ReceiveAsync(
+            b, new FakeAcceptance(DropDecision.Accept(_destination)), _sender, null, cts.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Task.WhenAll(send, receive));
+
+        Assert.DoesNotContain(
+            Directory.GetFiles(_destination),
+            f => f.Contains(".porta-drop", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Missing_source_file_is_reported_before_offer()
     {

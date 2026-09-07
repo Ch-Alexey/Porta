@@ -60,12 +60,16 @@ public static class BlockStreaming
     public static async Task<int> ReceiveAsync(
         MessageChannel channel,
         SpooledBlockSource spool,
+        long expectedBytes = 0,
+        IProgress<TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(spool);
 
+        var reporter = new ThrottledProgress(progress);
         int received = 0;
+        long bytes = 0;
         while (true)
         {
             BlockBatchMessage batch = await channel.ReadAsync<BlockBatchMessage>(cancellationToken).ConfigureAwait(false);
@@ -73,11 +77,16 @@ public static class BlockStreaming
             foreach (BlockData block in batch.Blocks)
             {
                 spool.Add(block.Hash, block.Data);
+                bytes += block.Data.Length;
                 received++;
             }
 
-            if (batch.IsLast)
-                return received;
+            reporter.Report(new TransferProgress(0, 0, bytes, expectedBytes));
+            if (!batch.IsLast)
+                continue;
+
+            reporter.ReportFinal(new TransferProgress(0, 0, bytes, expectedBytes));
+            return received;
         }
     }
 }

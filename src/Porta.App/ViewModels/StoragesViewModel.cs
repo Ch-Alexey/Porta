@@ -163,6 +163,7 @@ public partial class StoragesViewModel : ViewModelBase
                 string.Join(", ", shared),
                 storage.SyncMode == SyncMode.Automatic ? "Авто" : "Вручную",
                 storage.Paused ? "На паузе" : string.Empty,
+                storage.Paused ? "Продолжить" : "Пауза",
                 Remove,
                 ToggleSyncMode,
                 TogglePaused));
@@ -191,6 +192,7 @@ public sealed class StorageItem
         string sharedWith,
         string syncModeText,
         string pausedText,
+        string pauseButtonText,
         Action<StorageItem> remove,
         Action<StorageItem> toggleSyncMode,
         Action<StorageItem> togglePaused)
@@ -201,6 +203,7 @@ public sealed class StorageItem
         SharedWith = sharedWith;
         SyncModeText = syncModeText;
         PausedText = pausedText;
+        PauseButtonText = pauseButtonText;
         RemoveCommand = new RelayCommand(() => remove(this));
         ToggleSyncModeCommand = new RelayCommand(() => toggleSyncMode(this));
         TogglePausedCommand = new RelayCommand(() => togglePaused(this));
@@ -216,6 +219,9 @@ public sealed class StorageItem
 
     /// <summary>«На паузе» или пусто.</summary>
     public string PausedText { get; }
+
+    /// <summary>Что написано на кнопке паузы — «Пауза» или «Продолжить».</summary>
+    public string PauseButtonText { get; }
 
     public ICommand RemoveCommand { get; }
     public ICommand ToggleSyncModeCommand { get; }

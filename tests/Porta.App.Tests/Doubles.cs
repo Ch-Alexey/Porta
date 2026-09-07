@@ -35,9 +35,14 @@ internal sealed class FakeSyncController : ISyncController
 {
     public List<DiscoveredPeer> Calls { get; } = [];
 
-    public Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, CancellationToken cancellationToken = default)
+    /// <summary>Отчёты, которые фейк отдаёт по ходу «синхронизации».</summary>
+    public List<TransferProgress> Reports { get; } = [];
+
+    public Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, IProgress<TransferProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         Calls.Add(peer);
+        foreach (TransferProgress report in Reports)
+            progress?.Report(report);
         return Task.FromResult("ok");
     }
 }
@@ -60,12 +65,18 @@ internal sealed class FakeDropController(Porta.Core.Drop.DropSendResult? result 
 
     public Exception? Throws { get; set; }
 
+    /// <summary>Отчёты, которые фейк отдаёт во время «передачи».</summary>
+    public List<Porta.Core.Sync.TransferProgress> Reports { get; } = [];
+
     public Task<Porta.Core.Drop.DropSendResult> SendAsync(
         DiscoveredPeer peer,
         IReadOnlyList<Porta.Core.Drop.DropSourceFile> files,
+        IProgress<Porta.Core.Sync.TransferProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         Calls.Add((peer, files));
+        foreach (Porta.Core.Sync.TransferProgress report in Reports)
+            progress?.Report(report);
         if (Throws is not null)
             return Task.FromException<Porta.Core.Drop.DropSendResult>(Throws);
         return Task.FromResult(result ?? new Porta.Core.Drop.DropSendResult(true, files.Count, 1024));

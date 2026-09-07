@@ -107,6 +107,20 @@ public class UiDropAcceptanceTests
     }
 
     [Fact]
+    public void Progress_reports_reach_the_ui()
+    {
+        UiDropAcceptance acceptance = Create();
+        Porta.Core.Sync.TransferProgress? seen = null;
+        acceptance.ProgressChanged += p => seen = p;
+
+        acceptance.Progress.Report(new Porta.Core.Sync.TransferProgress(1, 3, 100, 300, "a.jpg"));
+
+        Assert.NotNull(seen);
+        Assert.Equal(100, seen!.BytesDone);
+        Assert.Equal("a.jpg", seen.CurrentFile);
+    }
+
+    [Fact]
     public async Task Sender_and_contents_are_visible_to_the_ui()
     {
         UiDropAcceptance acceptance = Create();

@@ -38,7 +38,7 @@ public class AutoSyncE2ETests : IDisposable
     private sealed class PullAllController(SyncService service, IStorageRepository storages, TaskCompletionSource done)
         : ISyncController
     {
-        public async Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, CancellationToken cancellationToken = default)
+        public async Task<string> SyncWithPeerAsync(DiscoveredPeer peer, SyncTrigger trigger = SyncTrigger.Manual, IProgress<TransferProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             IPEndPoint endpoint = peer.Endpoints.First(e => e.Address.AddressFamily == AddressFamily.InterNetwork);
             foreach (Storage storage in storages.List())

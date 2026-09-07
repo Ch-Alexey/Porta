@@ -87,7 +87,7 @@ public class DropAcceptanceE2ETests : IDisposable
 
         Task serve = receiver.ServeOnceAsync(listener, _ => null, drops: acceptance, cancellationToken: ct);
         Task<DropSendResult> send = sender.SendFilesAsync(
-            listener.LocalEndPoint, idReceiver.Id, [DropSourceFile.FromPath(file)], ct);
+            listener.LocalEndPoint, idReceiver.Id, [DropSourceFile.FromPath(file)], cancellationToken: ct);
 
         // Ждём, пока предложение доедет до вкладки, и «нажимаем» Принять.
         IncomingOfferItem offer = await WaitForOfferAsync(vm, ct);
@@ -139,7 +139,7 @@ public class DropAcceptanceE2ETests : IDisposable
 
         Task serve = receiver.ServeOnceAsync(listener, _ => null, drops: acceptance, cancellationToken: ct);
         Task<DropSendResult> send = sender.SendFilesAsync(
-            listener.LocalEndPoint, idReceiver.Id, [DropSourceFile.FromPath(file)], ct);
+            listener.LocalEndPoint, idReceiver.Id, [DropSourceFile.FromPath(file)], cancellationToken: ct);
 
         IncomingOfferItem offer = await WaitForOfferAsync(vm, ct);
         offer.RejectCommand.Execute(null);

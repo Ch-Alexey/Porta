@@ -11,6 +11,7 @@ using Porta.App.Services;
 using Porta.Core.Data;
 using Porta.Core.Discovery;
 using Porta.Core.Drop;
+using Porta.Core.Sync;
 
 namespace Porta.App.ViewModels;
 
@@ -27,6 +28,7 @@ public partial class TransfersViewModel : ViewModelBase
     private readonly IUiDispatcher _dispatcher;
     private readonly Dictionary<string, DiscoveredPeer> _peers = new(StringComparer.Ordinal);
     private readonly Dictionary<PendingDropOffer, IncomingOfferItem> _incoming = [];
+    private System.Threading.CancellationTokenSource? _sending;
 
     public TransfersViewModel(
         ISettingsRepository settings,
@@ -54,6 +56,7 @@ public partial class TransfersViewModel : ViewModelBase
         {
             acceptance.OfferReceived += OnOfferReceived;
             acceptance.OfferClosed += OnOfferClosed;
+            acceptance.ProgressChanged += p => _dispatcher.Post(() => OnIncomingProgress(p));
         }
     }
 
@@ -82,6 +85,26 @@ public partial class TransfersViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsSending { get; set; }
 
+    /// <summary>Ход отправки: «12 из 40 файлов, 340 МБ из 1.2 ГБ».</summary>
+    [ObservableProperty]
+    public partial string? ProgressText { get; set; }
+
+    /// <summary>Доля выполненного 0..1 — для полосы прогресса.</summary>
+    [ObservableProperty]
+    public partial double ProgressFraction { get; set; }
+
+    /// <summary>Ход приёма входящей передачи.</summary>
+    [ObservableProperty]
+    public partial string? IncomingProgressText { get; set; }
+
+    private void OnIncomingProgress(TransferProgress p)
+    {
+        // Приём закончился — убираем строку, иначе она врёт про идущую работу.
+        IncomingProgressText = p.FilesTotal > 0 && p.FilesDone >= p.FilesTotal
+            ? null
+            : $"Приём: {p.FilesDone} из {p.FilesTotal} · {FormatSize(p.BytesDone)} из {FormatSize(p.BytesTotal)}";
+    }
+
     /// <summary>Суммарный объём выбранного — человеку полезно до отправки.</summary>
     public string SelectionSummary => SelectedFiles.Count == 0
         ? "Файлы не выбраны"
@@ -95,6 +118,19 @@ public partial class TransfersViewModel : ViewModelBase
 
         IReadOnlyList<string> picked = await _picker.PickFilesAsync("Выберите файлы для отправки");
         foreach (string path in picked)
+        {
+            if (SelectedFiles.Any(f => string.Equals(f.FullPath, path, StringComparison.Ordinal)))
+                continue;
+            SelectedFiles.Add(OutgoingFileItem.From(path));
+        }
+
+        OnPropertyChanged(nameof(SelectionSummary));
+    }
+
+    /// <summary>Добавить файлы к отправке (например, найденные во вкладке «Медиа»).</summary>
+    public void AddFiles(IReadOnlyList<string> paths)
+    {
+        foreach (string path in paths)
         {
             if (SelectedFiles.Any(f => string.Equals(f.FullPath, path, StringComparison.Ordinal)))
                 continue;
@@ -135,9 +171,15 @@ public partial class TransfersViewModel : ViewModelBase
         var files = SelectedFiles.Select(f => DropSourceFile.FromPath(f.FullPath)).ToList();
         IsSending = true;
         StatusMessage = "Отправка…";
+        ProgressText = null;
+        ProgressFraction = 0;
+
+        using var cts = new System.Threading.CancellationTokenSource();
+        _sending = cts;
+        var progress = new DispatchedProgress<TransferProgress>(_dispatcher, OnProgress);
         try
         {
-            DropSendResult result = await _drops.SendAsync(peer, files);
+            DropSendResult result = await _drops.SendAsync(peer, files, progress, cts.Token);
             StatusMessage = result.Accepted
                 ? $"Отправлено файлов: {result.FilesSent} ({FormatSize(result.BytesSent)})"
                 : $"Отклонено: {result.RejectReason}";
@@ -145,14 +187,33 @@ public partial class TransfersViewModel : ViewModelBase
             if (result.Accepted)
                 ClearSelection();
         }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Отправка отменена";
+        }
         catch (Exception ex)
         {
             StatusMessage = "Ошибка отправки: " + ex.Message;
         }
         finally
         {
+            _sending = null;
             IsSending = false;
+            ProgressText = null;
+            ProgressFraction = 0;
         }
+    }
+
+    /// <summary>Прервать идущую отправку.</summary>
+    [RelayCommand]
+    private void CancelSend() => _sending?.Cancel();
+
+    private void OnProgress(TransferProgress p)
+    {
+        ProgressText = p.FilesTotal > 1
+            ? $"{p.FilesDone} из {p.FilesTotal} файлов · {FormatSize(p.BytesDone)} из {FormatSize(p.BytesTotal)}"
+            : $"{FormatSize(p.BytesDone)} из {FormatSize(p.BytesTotal)}";
+        ProgressFraction = p.Fraction ?? 0;
     }
 
     [RelayCommand]
@@ -175,7 +236,19 @@ public partial class TransfersViewModel : ViewModelBase
             return;
         }
 
-        _settings.Set(SettingKeys.DownloadsFolder, DownloadsFolder.Trim());
+        string folder = DownloadsFolder.Trim();
+        try
+        {
+            // Проверяем сразу, а не в момент приёма через полчаса.
+            Directory.CreateDirectory(folder);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Не удалось использовать папку: {ex.Message}";
+            return;
+        }
+
+        _settings.Set(SettingKeys.DownloadsFolder, folder);
         StatusMessage = "Папка для приёма сохранена";
     }
 

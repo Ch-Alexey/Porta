@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,7 +12,9 @@ using Porta.Core.App;
 using Porta.Core.Discovery;
 using Porta.Core.Identity;
 using Porta.Core.Model;
+using Porta.Core.Pairing;
 using Porta.Core.Sync;
+using Porta.App.Services;
 
 namespace Porta.App.ViewModels;
 
@@ -26,18 +29,26 @@ public partial class DevicesViewModel : ViewModelBase
     private readonly ISyncController? _sync;
     private readonly IQrCodeRenderer? _qr;
     private readonly Dictionary<string, DiscoveredPeer> _peers = new(StringComparer.Ordinal);
+    private CancellationTokenSource? _syncing;
+    private readonly TimeProvider _clock;
+    private DateTimeOffset? _invitationExpiresAt;
+    private readonly PeerOperations? _operations;
 
     public DevicesViewModel(
         IAppData data,
         IDeviceDiscovery? discovery = null,
         IUiDispatcher? dispatcher = null,
         ISyncController? sync = null,
-        IQrCodeRenderer? qr = null)
+        IQrCodeRenderer? qr = null,
+        TimeProvider? clock = null,
+        PeerOperations? operations = null)
     {
         _data = data;
         _dispatcher = dispatcher ?? new AvaloniaUiDispatcher();
         _sync = sync;
         _qr = qr;
+        _clock = clock ?? TimeProvider.System;
+        _operations = operations;
         Reload();
 
         if (discovery is not null)
@@ -77,6 +88,18 @@ public partial class DevicesViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
 
+    /// <summary>Идёт ли синхронизация — для кнопки отмены.</summary>
+    [ObservableProperty]
+    public partial bool IsSyncing { get; set; }
+
+    /// <summary>Ход синхронизации в байтах.</summary>
+    [ObservableProperty]
+    public partial string? SyncProgressText { get; set; }
+
+    /// <summary>До какого момента приглашение действительно.</summary>
+    [ObservableProperty]
+    public partial string? InvitationExpiryText { get; set; }
+
     /// <summary>
     /// Отозвать доверие: ключ и связи с хранилищами уходят, файлы на диске остаются.
     /// См. docs/features/29-managing-what-exists.md.
@@ -84,8 +107,14 @@ public partial class DevicesViewModel : ViewModelBase
     private void Revoke(DeviceItem item)
     {
         // DeviceId.Parse выбрасывает дефисы, поэтому читаемая форма разбирается как есть.
-        _data.Devices.Remove(DeviceId.Parse(item.DeviceId));
-        StatusMessage = $"Доверие к «{item.Name}» отозвано. Полученные файлы остались.";
+        DeviceId id = DeviceId.Parse(item.DeviceId);
+        _data.Devices.Remove(id);
+
+        // Идущая операция с этим устройством должна прерваться, а не доработать до конца.
+        bool interrupted = _operations?.CancelFor(id) ?? false;
+        StatusMessage = interrupted
+            ? $"Доверие к «{item.Name}» отозвано, текущая операция прервана. Полученные файлы остались."
+            : $"Доверие к «{item.Name}» отозвано. Полученные файлы остались.";
         Reload();
     }
 
@@ -94,6 +123,40 @@ public partial class DevicesViewModel : ViewModelBase
     {
         InvitationToken = _data.CreateInvitation();
         InvitationQrPng = RenderQr(InvitationToken);
+        _invitationExpiresAt = ExpiryOf(InvitationToken);
+        InvitationExpiryText = _invitationExpiresAt is { } until
+            ? $"Действительно до {until.ToLocalTime():HH:mm:ss}"
+            : null;
+    }
+
+    /// <summary>
+    /// Убрать приглашение, если срок вышел. Зовётся при обращении к вкладке и перед
+    /// показом — крутить фоновый таймер ради надписи незачем.
+    /// См. docs/features/34-ui-polish.md.
+    /// </summary>
+    public void DropExpiredInvitation()
+    {
+        if (_invitationExpiresAt is not { } until || _clock.GetUtcNow() < until)
+            return;
+
+        InvitationToken = string.Empty;
+        InvitationQrPng = null;
+        InvitationExpiryText = null;
+        _invitationExpiresAt = null;
+        StatusMessage = "Приглашение истекло — создайте новое";
+    }
+
+    /// <summary>Срок действия токена; null — токен не разобрать.</summary>
+    private static DateTimeOffset? ExpiryOf(string token)
+    {
+        try
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(PairingTokenCodec.Decode(token).ExpiresAtUnix);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Убрать приглашение с экрана — оно одноразовое и не должно висеть вечно.</summary>
@@ -102,6 +165,8 @@ public partial class DevicesViewModel : ViewModelBase
     {
         InvitationToken = string.Empty;
         InvitationQrPng = null;
+        InvitationExpiryText = null;
+        _invitationExpiresAt = null;
     }
 
     private byte[]? RenderQr(string token)
@@ -143,25 +208,50 @@ public partial class DevicesViewModel : ViewModelBase
     [RelayCommand]
     private async Task SyncWithFoundAsync()
     {
-        if (_sync is null || _peers.Count == 0)
+        if (_sync is null || _peers.Count == 0 || IsSyncing)
             return;
 
         StatusMessage = "Синхронизация…";
+        IsSyncing = true;
         int devices = 0;
+
+        using var cts = new CancellationTokenSource();
+        _syncing = cts;
+        var progress = new DispatchedProgress<TransferProgress>(
+            _dispatcher,
+            p => SyncProgressText = p.BytesTotal > 0
+                ? $"{FormatSize(p.BytesDone)} из {FormatSize(p.BytesTotal)}"
+                : null);
         try
         {
             foreach (DiscoveredPeer peer in _peers.Values.ToList())
             {
-                await _sync.SyncWithPeerAsync(peer, SyncTrigger.Manual);
+                await _sync.SyncWithPeerAsync(peer, SyncTrigger.Manual, progress, cts.Token);
                 devices++;
             }
             StatusMessage = $"Синхронизировано с {devices} устр.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = $"Синхронизация отменена (успели: {devices} устр.)";
         }
         catch (Exception ex)
         {
             StatusMessage = "Ошибка синхронизации: " + ex.Message;
         }
+        finally
+        {
+            _syncing = null;
+            IsSyncing = false;
+            SyncProgressText = null;
+        }
     }
+
+    /// <summary>Прервать идущую синхронизацию.</summary>
+    [RelayCommand]
+    private void CancelSync() => _syncing?.Cancel();
+
+    private static string FormatSize(long bytes) => TransfersViewModel.FormatSize(bytes);
 
     private void OnPeerDiscovered(DiscoveredPeer peer) => _dispatcher.Post(() =>
     {

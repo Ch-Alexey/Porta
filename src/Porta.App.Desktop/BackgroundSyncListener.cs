@@ -16,7 +16,11 @@ namespace Porta.App.Desktop;
 /// хранилища доверенным устройствам и принимает разовые передачи (если голова передала
 /// <paramref name="drops"/>). См. docs/features/21-sync-from-ui.md и 28-drop-ui.md.
 /// </summary>
-public sealed class BackgroundSyncListener(AppEnvironment environment, int port, IDropAcceptance? drops = null)
+public sealed class BackgroundSyncListener(
+    AppEnvironment environment,
+    int port,
+    IDropAcceptance? drops = null,
+    IProgress<TransferProgress>? progress = null)
     : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cts = new();
@@ -46,7 +50,7 @@ public sealed class BackgroundSyncListener(AppEnvironment environment, int port,
             {
                 try
                 {
-                    await service.ServeOnceAsync(listener, ResolveFolder, drops: drops, cancellationToken: cancellationToken)
+                    await service.ServeOnceAsync(listener, ResolveFolder, drops: drops, progress: progress, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested)

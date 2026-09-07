@@ -24,16 +24,22 @@ public partial class MainViewModel : ViewModelBase
         UiDropAcceptance? dropAcceptance = null,
         IFolderPicker? folderPicker = null,
         IWatchedFolders? watchedFolders = null,
-        IQrCodeRenderer? qrRenderer = null)
+        IVersionArchive? versions = null,
+        IQrCodeRenderer? qrRenderer = null,
+        PeerOperations? operations = null)
     {
         DeviceName = data.DeviceName;
         DeviceId = data.DeviceId;
         Storages = new StoragesViewModel(data.Storages, data.Devices, folderPicker, watchedFolders);
-        Devices = new DevicesViewModel(data, discovery, dispatcher, sync, qrRenderer ?? new QrCoderRenderer());
-        Media = new MediaViewModel(mediaScanner, dispatcher);
+        Versions = new VersionsViewModel(data.Storages, versions);
+        Devices = new DevicesViewModel(
+            data, discovery, dispatcher, sync, qrRenderer ?? new QrCoderRenderer(),
+            operations: operations);
         Transfers = new TransfersViewModel(
             settings ?? new InMemorySettingsRepository(),
             drops, filePicker, discovery, dropAcceptance, dispatcher, folderPicker);
+        // «Отправить найденное» перекладывает пути во вкладку «Передача».
+        Media = new MediaViewModel(mediaScanner, dispatcher, onSend: Transfers.AddFiles);
     }
 
     [ObservableProperty]
@@ -49,4 +55,6 @@ public partial class MainViewModel : ViewModelBase
     public MediaViewModel Media { get; }
 
     public TransfersViewModel Transfers { get; }
+
+    public VersionsViewModel Versions { get; }
 }

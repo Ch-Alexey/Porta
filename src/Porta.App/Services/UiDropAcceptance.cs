@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Porta.Core.Drop;
 using Porta.Core.Identity;
 using Porta.Core.Protocol;
+using Porta.Core.Sync;
 
 namespace Porta.App.Services;
 
@@ -35,6 +36,18 @@ public sealed class UiDropAcceptance : IDropAcceptance
 
     /// <summary>Предложение закрыто (решено или протухло) — UI должен его убрать.</summary>
     public event Action<PendingDropOffer>? OfferClosed;
+
+    /// <summary>Ход приёма — чтобы получатель тоже видел, что работа идёт.</summary>
+    public event Action<TransferProgress>? ProgressChanged;
+
+    /// <summary>Приёмник отчётов для передачи в фоновый слушатель.</summary>
+    public IProgress<TransferProgress> Progress => new Relay(this);
+
+    /// <summary>Переправляет отчёты ядра в событие для UI.</summary>
+    private sealed class Relay(UiDropAcceptance owner) : IProgress<TransferProgress>
+    {
+        public void Report(TransferProgress value) => owner.ProgressChanged?.Invoke(value);
+    }
 
     public async Task<DropDecision> DecideAsync(
         DropOfferMessage offer,

@@ -41,6 +41,12 @@ public partial class App : Application
     /// <summary>Наблюдатель за папками хранилищ — чтобы UI мог его переконфигурировать.</summary>
     public static IWatchedFolders? InjectedWatchedFolders { get; set; }
 
+    /// <summary>Архив прежних версий файлов — для раздела «История версий».</summary>
+    public static IVersionArchive? InjectedVersions { get; set; }
+
+    /// <summary>Учёт идущих операций — чтобы отзыв доверия их обрывал.</summary>
+    public static PeerOperations? InjectedOperations { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -63,7 +69,9 @@ public partial class App : Application
             InjectedFilePicker ?? new AvaloniaFilePicker(),
             InjectedDropAcceptance,
             InjectedFolderPicker ?? new AvaloniaFilePicker(),
-            InjectedWatchedFolders);
+            InjectedWatchedFolders,
+            InjectedVersions,
+            operations: InjectedOperations);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

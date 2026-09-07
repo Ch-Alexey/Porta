@@ -62,11 +62,8 @@ public class FileSyncOverQuicTests : IDisposable
         {
             await ss.Control.WriteAsync(new FolderIndexMessage("s1", serverIndex), ct);
             BlockRequestMessage request = await ss.Control.ReadAsync<BlockRequestMessage>(ct);
-            var served = new List<BlockData>();
-            foreach (byte[] hash in request.Hashes)
-                if (serverBlocks.TryGet(hash, out byte[] data))
-                    served.Add(new BlockData(hash, data));
-            await ss.Control.WriteAsync(new BlockResponseMessage(served), ct);
+            // Пачками — как в живом синке (см. docs/features/27-block-streaming.md).
+            await BlockStreaming.SendAsync(ss.Control, request.Hashes, serverBlocks, ct);
         }
 
         async Task ClientFlow()
@@ -76,9 +73,9 @@ public class FileSyncOverQuicTests : IDisposable
             IndexDiff diff = IndexComparer.Compare(localIndex, index.Entries);
 
             await cs.Control.WriteAsync(new BlockRequestMessage(diff.MissingBlocks.Select(b => b.Hash).ToArray()), ct);
-            BlockResponseMessage response = await cs.Control.ReadAsync<BlockResponseMessage>(ct);
 
-            var received = new MemoryBlockSource(response.Blocks.Select(b => new KeyValuePair<byte[], byte[]>(b.Hash, b.Data)));
+            using var received = new SpooledBlockSource();
+            await BlockStreaming.ReceiveAsync(cs.Control, received, cancellationToken: ct);
             var source = new CompositeBlockSource(received, new FolderBlockReader(_clientDir, localIndex));
             foreach (FileIndexEntry file in diff.FilesToUpdate)
                 FileAssembler.Write(_clientDir, file, source);
