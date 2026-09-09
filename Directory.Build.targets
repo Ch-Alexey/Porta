@@ -5,8 +5,7 @@
     чтобы приложение и тесты работали без DYLD_LIBRARY_PATH. Для реальной поставки
     библиотеку нужно бандлить с приложением (установщик), а не полагаться на Homebrew.
   -->
-  <Target Name="CopyLibMsQuic" AfterTargets="Build;Publish"
-          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+  <Target Name="CopyLibMsQuic" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <ItemGroup>
       <MsQuicLib Include="/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib"
                  Condition="Exists('/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib')" />
@@ -17,6 +16,26 @@
           SourceFiles="@(MsQuicLib)"
           DestinationFiles="$(OutDir)libmsquic.dylib"
           SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
+    Отдельная цель для публикации: у Publish своя папка ($(PublishDir)), и копия в
+    $(OutDir) в неё НЕ попадает. Без этого опубликованное приложение на другой машине
+    остаётся без QUIC и молча не синхронизируется.
+  -->
+  <Target Name="CopyLibMsQuicToPublish" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <ItemGroup>
+      <MsQuicLibPublish Include="/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib"
+                        Condition="Exists('/opt/homebrew/opt/libmsquic/lib/libmsquic.dylib')" />
+      <MsQuicLibPublish Include="/usr/local/opt/libmsquic/lib/libmsquic.dylib"
+                        Condition="Exists('/usr/local/opt/libmsquic/lib/libmsquic.dylib')" />
+    </ItemGroup>
+    <Copy Condition="'@(MsQuicLibPublish)' != ''"
+          SourceFiles="@(MsQuicLibPublish)"
+          DestinationFiles="$(PublishDir)libmsquic.dylib"
+          SkipUnchangedFiles="true" />
+    <Warning Condition="'@(MsQuicLibPublish)' == ''"
+             Text="libmsquic.dylib не найдена — в публикации не будет QUIC, синхронизация работать не будет." />
   </Target>
 
 </Project>

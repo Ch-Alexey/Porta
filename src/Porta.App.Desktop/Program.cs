@@ -16,8 +16,21 @@ namespace Porta.App.Desktop;
 
 sealed class Program
 {
-    /// <summary>Порт, который устройство объявляет для будущего QUIC-транспорта синка.</summary>
-    private const int SyncPort = 47100;
+    /// <summary>Порт по умолчанию, который устройство объявляет для QUIC-транспорта синка.</summary>
+    private const int DefaultSyncPort = 47100;
+
+    /// <summary>
+    /// Папка данных и порт можно переопределить переменными окружения
+    /// PORTA_DATA_DIR и PORTA_PORT. Это нужно, чтобы поднять два экземпляра на одной
+    /// машине для проверки: иначе они делят одну БД, одну личность и один порт.
+    /// См. docs/testing-two-devices.md.
+    /// </summary>
+    private static string? DataDirOverride => Environment.GetEnvironmentVariable("PORTA_DATA_DIR");
+
+    private static int SyncPort =>
+        int.TryParse(Environment.GetEnvironmentVariable("PORTA_PORT"), out int port) && port is > 0 and < 65536
+            ? port
+            : DefaultSyncPort;
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -26,7 +39,7 @@ sealed class Program
     public static void Main(string[] args)
     {
         // Композиция: ядро + mDNS-обнаружение + приём/запуск синка (QUIC) из инфраструктуры.
-        AppEnvironment environment = AppEnvironment.Create();
+        AppEnvironment environment = AppEnvironment.Create(DataDirOverride);
         App.InjectedData = environment;
         App.InjectedDiscovery = TryStartDiscovery(environment);
 
