@@ -103,7 +103,7 @@ public partial class VersionsViewModel : ViewModelBase
 
 /// <summary>
 /// Строка списка версий. Команда живёт на строке — шаблону не нужно искать view-модель
-/// через предка (см. docs/reflections/28-drop-ui.md).
+/// через предка.
 /// </summary>
 public sealed class VersionItem
 {

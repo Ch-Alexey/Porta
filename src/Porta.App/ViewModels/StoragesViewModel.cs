@@ -181,7 +181,7 @@ public partial class StoragesViewModel : ViewModelBase
 
 /// <summary>
 /// Строка списка хранилищ. Команды живут на самой строке — шаблону не нужно искать
-/// view-модель через предка (см. решение из docs/reflections/28-drop-ui.md).
+/// view-модель через предка.
 /// </summary>
 public sealed class StorageItem
 {

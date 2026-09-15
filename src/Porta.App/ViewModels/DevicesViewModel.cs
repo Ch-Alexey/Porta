@@ -283,7 +283,7 @@ public partial class DevicesViewModel : ViewModelBase
 /// <summary>Строка списка доверенных устройств для отображения.</summary>
 /// <summary>
 /// Доверенное устройство в списке. Команда живёт на самой строке — шаблону не нужно
-/// искать view-модель через предка (см. docs/reflections/28-drop-ui.md).
+/// искать view-модель через предка.
 /// </summary>
 public sealed class DeviceItem
 {
